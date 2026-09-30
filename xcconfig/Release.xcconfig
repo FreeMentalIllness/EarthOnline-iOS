@@ -1,0 +1,11 @@
+#include "Common.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -O
+SWIFT_COMPILATION_MODE = wholemodule
+ENABLE_NS_ASSERTIONS = NO
+VALIDATE_PRODUCT = NO
+COPY_PHASE_STRIP = YES
+SWIFT_ACTIVE_COMPILATION_CONDITIONS =
+
+// 本地密钥（不入库）：由 CI 从仓库 Secrets 写入，或本机手动创建
+#include? "Secrets.local.xcconfig"

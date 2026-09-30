@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  可选 App Group 授权文件（默认不启用）。
+  用途：让桌面小组件读到实时数据。启用会把 com.apple.security.application-groups 写进签名，
+  免费 Apple ID / SideStore 场景下大概率拿不到对应授权，可能导致安装或刷新失败。
+
+  启用步骤：
+    1. 把 group.$(PRODUCT_BUNDLE_IDENTIFIER).shared 换成你自己的 group id（需带团队前缀）；
+    2. 在 project.yml 里把两个目标的 entitlements.path 指向本文件；
+    3. 重新 xcodegen generate，并用能签发 App Group 的账号签名。
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.application-groups</key>
+    <array>
+        <string>group.com.example.earthonline.shared</string>
+    </array>
+</dict>
+</plist>

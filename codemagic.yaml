@@ -1,0 +1,50 @@
+# Codemagic 备选流水线（GitHub Actions 不可用时使用）
+# 用法：把本文件放到仓库根目录，Codemagic 新建 Workflow → 选择 codemagic.yaml
+workflows:
+  ios-earthonline:
+    name: EarthOnline iOS (unsigned ipa)
+    max_build_duration: 45
+    instance_type: mac_min_m2
+    integrations:
+      app_store_connect: none
+    environment:
+      groups:
+        - earthonline_secrets # 可选：其中放 AMAP_KEY
+      vars:
+        VARIANT: full # full（含小组件扩展）或 nowidget（无扩展兜底）
+      xcode: latest
+      cocoapods: default
+    scripts:
+      - name: Install xcodegen
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
+      - name: Inject local secrets
+        script: |
+          if [ -n "${AMAP_KEY:-}" ]; then
+            printf 'AMAP_KEY = %s\n' "$AMAP_KEY" > xcconfig/Secrets.local.xcconfig
+          else
+            echo "no AMAP_KEY, fallback to system MapKit"
+          fi
+      - name: Build unsigned ipa
+        script: |
+          chmod +x Scripts/build_unsigned_ipa.sh Scripts/verify_ipa.sh
+          if [ "${VARIANT}" = "nowidget" ]; then
+            bash Scripts/build_unsigned_ipa.sh project.nowidget.yml
+          else
+            bash Scripts/build_unsigned_ipa.sh project.yml
+          fi
+      - name: Verify entitlements
+        script: |
+          IPA=$(ls -1 EarthOnline-iOS-*-unsigned.ipa | head -n 1)
+          bash Scripts/verify_ipa.sh "$IPA"
+    artifacts:
+      - EarthOnline-iOS-*-unsigned.ipa
+    publishing:
+      email:
+        recipients: []
+      scripts:
+        - name: Print artifact location
+          script: echo "ipa 已在 Codemagic 构建产物区下载"

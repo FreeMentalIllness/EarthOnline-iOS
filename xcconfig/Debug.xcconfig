@@ -1,0 +1,12 @@
+#include "Common.xcconfig"
+
+SWIFT_OPTIMIZATION_LEVEL = -Onone
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG
+SWIFT_COMPILATION_MODE = singlefile
+ONLY_ACTIVE_ARCH = YES
+ENABLE_TESTABILITY = YES
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited) DEBUG=1
+MTL_ENABLE_DEBUG_INFO = YES
+
+// 本地密钥（不入库）：复制 Secrets.local.template.xcconfig 后填入自己的高德 Key
+#include? "Secrets.local.xcconfig"
