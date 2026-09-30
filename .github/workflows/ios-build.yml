@@ -89,6 +89,15 @@ jobs:
             echo "artifact=EarthOnline-iOS-full" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: 打印关键构建设置
+        run: |
+          echo "== INFOPLIST_FILE 指向的文件 =="
+          ls -l Resources/Info.plist || true
+          echo "== xcodebuild 解析结果 =="
+          xcodebuild -project EarthOnline.xcodeproj -scheme EarthOnline \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -showBuildSettings 2>/dev/null | grep -E "^\s*(INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION|VERSIONING_SYSTEM|INFOPLIST_KEY_.*) =" || true
+
       - name: 构建未签名 ipa
         run: |
           chmod +x Scripts/build_unsigned_ipa.sh Scripts/verify_ipa.sh
