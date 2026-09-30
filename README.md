@@ -2,10 +2,14 @@
 
 地球Online 的第四端，与 Web / Android / Windows 共用同一份数据契约 `earth-online-backup.json`。
 
-- 版本基线：**v1.0.4**（四端统一，AppDelegate/bundleVersion 由 xcconfig 的 MARKETING_VERSION=1.0.4 / CURRENT_PROJECT_VERSION=1 驱动）
+- 版本基线：**v1.0.4**（四端统一，由 `xcconfig/Common.xcconfig` 的 MARKETING_VERSION / CURRENT_PROJECT_VERSION 驱动）
 - Bundle ID：`com.example.earthonline`；小组件扩展：`com.example.earthonline.EarthOnlineWidgets`
 - 展示名：`地球Online`
 - URL Scheme：`earthonline://`（home / tasks / backpack / achievements / map / stats / ai / settings）
+
+> **云端构建已就绪**：推送到 main 后，GitHub Actions（`.github/workflows/ios-build.yml`，macOS-15 runner）
+> 自动产出未签名 ipa：`EarthOnline-iOS-v1.0.4-1-unsigned.ipa`（full 变体，含小组件扩展）。
+> 安装方式见 `Docs/SideStore_安装与续签指南.md`。
 
 ---
 
@@ -64,7 +68,28 @@ open EarthOnline.xcodeproj
 5. **Live Activity（灵动岛）不受影响**：实时活动的数据由 App 进程主动 push，天然读到最新内容，是本方案下体验最完整的 iOS 专属能力。
 6. **ATS 与文件共享**：`NSAllowsArbitraryLoads = YES`（自建 http WebDAV 与自定义 AI 接口地址需要），`UIFileSharingEnabled = YES`（可在「文件 App」里直接取出备份 JSON）。仅上架 App Store 时需按实际情况收紧。
 
-## 五、产物
+## 五、产物与云端构建
 
-云端构建产物命名：`EarthOnline-iOS-v1.0.4-<build>-unsigned.ipa`
-下载方式见 `Docs/SideStore_安装与续签指南.md`。
+| 项 | 值 |
+| --- | --- |
+| 仓库 | https://github.com/FreeMentalIllness/EarthOnline-iOS |
+| 流水线 | `.github/workflows/ios-build.yml`（macos-15 + Xcode latest-stable + xcodegen） |
+| 触发 | 推送到 main，或手动 `workflow_dispatch`（可选 full / nowidget 变体） |
+| 产物名 | `EarthOnline-iOS-v1.0.4-1-unsigned.ipa` |
+| 保留期 | Artifact 30 天 |
+| 校验 | `Scripts/verify_ipa.sh` 检查包结构、签名痕迹与限制性 Entitlements |
+
+安装方式见 `Docs/SideStore_安装与续签指南.md`。
+
+### 踩过的坑（改流水线前务必先读）
+
+1. **xcodegen 的 `--project` 是「目录」不是「工程文件路径」**：传 `EarthOnline.xcodeproj` 会让它去拷贝一个不存在的临时工程而报错。
+2. **Windows 编辑 shell 脚本极易变成 CRLF**，macOS 的 bash 直接报 `invalid option name`。已用 `.gitattributes` 锁 `*.sh text eol=lf`。
+3. **`set -o pipefail` 下禁用 `cmd | head -1` 取值**：上游收到 SIGPIPE 会让整段脚本静默失败，一律改用单条 `awk`。
+4. **Xcode 26 上 `GENERATE_INFOPLIST_FILE=NO` + `INFOPLIST_FILE` 的组合会失效**：
+   自定义 plist 条目（App 名、权限文案、ATS、灵动岛开关）会被 Xcode 自动生成的精简版取代。
+   因此构建脚本在 `build/Products/*/EarthOnline.app` 生成后，用 python3 读取
+   `Resources/Info.template.json` 重新写出二进制 Info.plist。
+5. **不要用 PlistBuddy/plutil 改这份 plist**：前者遇空值直接 abort（Abort trap 6），
+   后者读带注释的 XML 会在中途截断。**模板 JSON 是「App 元信息」的唯一权威源**，
+   `Resources/Info.plist` 只给 Xcode 自用。
