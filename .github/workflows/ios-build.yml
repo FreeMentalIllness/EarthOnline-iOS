@@ -91,12 +91,11 @@ jobs:
 
       - name: 打印关键构建设置
         run: |
-          echo "== INFOPLIST_FILE 指向的文件 =="
-          ls -l Resources/Info.plist || true
-          echo "== xcodebuild 解析结果 =="
-          xcodebuild -project EarthOnline.xcodeproj -scheme EarthOnline \
-            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
-            -showBuildSettings 2>/dev/null | grep -E "^\s*(INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION|VERSIONING_SYSTEM|INFOPLIST_KEY_.*) =" || true
+          echo "== 工程文件内的版本/Info.plist 设置 =="
+          grep -nE "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION" \
+            EarthOnline.xcodeproj/project.pbxproj || echo "(未匹配到任何设置)"
+          echo "== EarthOnline 目标的 buildConfigurationList 片段 =="
+          grep -n "PRODUCT_BUNDLE_IDENTIFIER" EarthOnline.xcodeproj/project.pbxproj | head -5
 
       - name: 构建未签名 ipa
         run: |
