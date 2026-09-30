@@ -1,0 +1,43 @@
+{
+  "CFBundleDevelopmentRegion": "zh_CN",
+  "CFBundleDisplayName": "地球Online",
+  "CFBundleExecutable": "EarthOnline",
+  "CFBundleIdentifier": "com.example.earthonline",
+  "CFBundleInfoDictionaryVersion": "6.0",
+  "CFBundleName": "EarthOnline",
+  "CFBundlePackageType": "APPL",
+  "CFBundleShortVersionString": "1.0.4",
+  "CFBundleVersion": "1",
+  "CFBundleURLTypes": [
+    {
+      "CFBundleTypeRole": "Editor",
+      "CFBundleURLName": "com.example.earthonline",
+      "CFBundleURLSchemes": ["earthonline"]
+    }
+  ],
+  "ITSAppUsesNonExemptEncryption": false,
+  "LSRequiresIPhoneOS": true,
+  "MinimumOSVersion": "17.0",
+  "CFBundleSupportedPlatforms": ["iPhoneOS"],
+  "UIDeviceFamily": [1, 2],
+  "NSAppTransportSecurity": {
+    "NSAllowsArbitraryLoads": true
+  },
+  "NSLocationWhenInUseUsageDescription": "用于记录你的足迹与当前位置",
+  "NSPhotoLibraryUsageDescription": "用于选择头像、壁纸与记忆相册照片",
+  "NSSupportsLiveActivities": true,
+  "UIFileSharingEnabled": true,
+  "UILaunchScreen": {
+    "UIColorName": "LaunchBackground"
+  },
+  "UIRequiredDeviceCapabilities": ["arm64"],
+  "UISupportedInterfaceOrientations": ["UIInterfaceOrientationPortrait"],
+  "UISupportedInterfaceOrientations~ipad": [
+    "UIInterfaceOrientationPortrait",
+    "UIInterfaceOrientationPortraitUpsideDown",
+    "UIInterfaceOrientationLandscapeLeft",
+    "UIInterfaceOrientationLandscapeRight"
+  ],
+  "AMapKey": "",
+  "EO_MAP_BACKEND": "mapkit"
+}

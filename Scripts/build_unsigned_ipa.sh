@@ -100,35 +100,33 @@ fi
 # 二进制 plist，保证 23 个自定义条目与版本号一字不差地写进产物。
 echo "==> 写入自定义 Info.plist"
 INF="$APP_SRC/Info.plist"
+TPL="$WORKDIR/Resources/Info.template.json"
 PY_BIN=""
-for cand in "/usr/bin/python3" "/usr/local/bin/python3" "/opt/homebrew/bin/python3"; do
-  [[ -x "$cand" ]] && { PY_BIN="$cand"; break; }
+for cand in "/usr/bin/python3" "/usr/local/bin/python3" "/opt/homebrew/bin/python3" "python3"; do
+  if command -v "$cand" >/dev/null 2>&1; then PY_BIN="$cand"; break; fi
 done
 if [[ -z "$PY_BIN" ]]; then
-  echo "!! 未找到 python3，跳过 Info.plist 自定义注入（产物仍可安装，但 App 名/版本可能回落）"
+  echo "!! 未找到 python3，跳过 Info.plist 注入（产物仍可安装，但 App 名/版本可能回落）"
 else
-  "$PY_BIN" - "$WORKDIR/Resources/Info.plist" "$INF" \
+  "$PY_BIN" - "$TPL" "$INF" \
     "$MARKETING_VERSION" "$CURRENT_PROJECT_VERSION" "$AMAP_KEY" "$EO_MAP_BACKEND" <<'PYEOF'
-import plistlib, sys
-src, dst, ver, build, amap_key, backend = sys.argv[1:7]
-p = plistlib.load(open(src, 'rb'))
-p['CFBundleExecutable'] = 'EarthOnline'
-p['CFBundleName'] = 'EarthOnline'
-p['CFBundleDisplayName'] = '\u5730\u7403Online'
-p['CFBundleIdentifier'] = 'com.example.earthonline'
-p['CFBundlePackageType'] = 'APPL'
-p['CFBundleInfoDictionaryVersion'] = '6.0'
-p['CFBundleDevelopmentRegion'] = 'zh_CN'
-p['CFBundleShortVersionString'] = ver
-p['CFBundleVersion'] = build
-p['AMapKey'] = amap_key
-p['EO_MAP_BACKEND'] = backend
-p['MinimumOSVersion'] = '17.0'
-p['CFBundleSupportedPlatforms'] = ['iPhoneOS']
-p['UIDeviceFamily'] = [1, 2]
-with open(dst, 'wb') as f:
-    plistlib.dump(p, f, fmt=plistlib.FMT_BINARY)
-print('注入完成，键数：', len(p))
+import json, plistlib, sys
+tpl, dst, ver, build, amap_key, backend = sys.argv[1:7]
+data = json.load(open(tpl, encoding="utf-8"))
+data["CFBundleExecutable"] = "EarthOnline"
+data["CFBundleName"] = "EarthOnline"
+data["CFBundleDisplayName"] = "\u5730\u7403Online"
+data["CFBundleIdentifier"] = "com.example.earthonline"
+data["CFBundlePackageType"] = "APPL"
+data["CFBundleInfoDictionaryVersion"] = "6.0"
+data["CFBundleShortVersionString"] = ver
+data["CFBundleVersion"] = build
+data["AMapKey"] = amap_key
+data["EO_MAP_BACKEND"] = backend
+data["MinimumOSVersion"] = "17.0"
+with open(dst, "wb") as f:
+    plistlib.dump(data, f, fmt=plistlib.FMT_BINARY)
+print("注入完成，键数：", len(data))
 PYEOF
 fi
 
