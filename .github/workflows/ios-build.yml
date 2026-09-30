@@ -14,6 +14,10 @@ on:
         description: 是否上传产物
         type: boolean
         default: true
+      build_simulator:
+        description: 同时构建模拟器包（Appetize 用）
+        type: boolean
+        default: true
   push:
     branches: [main]
     paths:
@@ -114,6 +118,22 @@ jobs:
           retention-days: 30
           if-no-files-found: error
 
+      - name: 构建模拟器 App（Appetize 用）
+        if: ${{ github.event.inputs.build_simulator != 'false' }}
+        continue-on-error: true
+        run: |
+          chmod +x Scripts/build_simulator_app.sh
+          bash Scripts/build_simulator_app.sh "${{ steps.spec.outputs.spec }}"
+
+      - name: 上传模拟器产物
+        if: ${{ github.event.inputs.upload_artifact != 'false' && hashFiles('EarthOnline-iOS-Simulator.zip') != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: EarthOnline-iOS-Simulator
+          path: EarthOnline-iOS-Simulator.zip
+          retention-days: 30
+          if-no-files-found: error
+
       - name: 汇总
         run: |
           {
@@ -122,4 +142,15 @@ jobs:
             echo "- 变体：${VARIANT}"
             echo "- 产物：${{ steps.artifact-path.outputs.name }}"
             echo "- 说明：未签名 ipa，需用 SideStore / AltStore 自签名安装"
+            if [ -f EarthOnline-iOS-Simulator.zip ]; then
+              echo ""
+              echo "### 模拟器包（Appetize）"
+              echo ""
+              echo "- 产物：EarthOnline-iOS-Simulator.zip"
+              echo "- 大小：$(du -h EarthOnline-iOS-Simulator.zip | awk '{print $1}')"
+              echo "- 说明：模拟器 .app（已除扩展与签名痕迹），可直接上传 Appetize.io"
+            else
+              echo ""
+              echo "- 模拟器包：本次未产出（可在 workflow_dispatch 中关闭 build_simulator，或查看上一步日志）"
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
