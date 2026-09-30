@@ -142,6 +142,8 @@ data["CFBundleVersion"] = build
 data["AMapKey"] = amap_key
 data["EO_MAP_BACKEND"] = backend
 data["MinimumOSVersion"] = "17.0"
+# 模拟器 bundle 按 Xcode 惯例标记为 iPhoneSimulator，避免 Appetize 误判为设备包
+data["CFBundleSupportedPlatforms"] = ["iPhoneSimulator"]
 with open(dst, "wb") as f:
     plistlib.dump(data, f, fmt=plistlib.FMT_BINARY)
 print("注入完成，键数：", len(data))
