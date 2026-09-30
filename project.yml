@@ -48,6 +48,11 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.earthonline
         PRODUCT_NAME: EarthOnline
+        # 显式指定，避免 Xcode 走自动生成 Info.plist 的分支（会导致版本号/自定义 key 丢失）
+        INFOPLIST_FILE: Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: 1.0.4
+        CURRENT_PROJECT_VERSION: 1
         LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks
     dependencies:
       - target: EarthOnlineWidgets
@@ -72,6 +77,10 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.example.earthonline.EarthOnlineWidgets
         PRODUCT_NAME: EarthOnlineWidgets
+        INFOPLIST_FILE: Resources/WidgetInfo.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: 1.0.4
+        CURRENT_PROJECT_VERSION: 1
         SKIP_INSTALL: YES
         LD_RUNPATH_SEARCH_PATHS: $(inherited) @executable_path/Frameworks @executable_path/../../Frameworks
     dependencies: []
