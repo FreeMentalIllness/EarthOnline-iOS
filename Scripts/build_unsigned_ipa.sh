@@ -94,24 +94,32 @@ if [[ ! -d "$APP_SRC" ]]; then
   exit 1
 fi
 
-# 兜底：若 Xcode 走了自动生成 Info.plist 的分支，自定义条目（App 名、权限描述、地图配置、
-# 版本号）会全部丢失。这里统一把仓库里的 Info.plist 合并进产物，再显式展开构建变量，
-# 保证无论 Xcode 版本如何变化，安装的 App 名称/版本/权限文案都是对的。
-echo "==> 合并自定义 Info.plist"
-/usr/libexec/PlistBuddy -c "Merge $WORKDIR/Resources/Info.plist" "$APP_SRC/Info.plist" >/dev/null 2>&1 || true
+# 兜底：部分 Xcode 版本会让 GENERATE_INFOPLIST_FILE/INFOPLIST_FILE 的组合失效，导致
+# 自定义条目（App 名、权限文案、ATS、灵动岛开关）全部丢失。这里以仓库内的 Info.plist
+# 为基准重写产物里的 Info.plist，并补齐安装必需的系统元数据，最后转二进制去掉注释。
+echo "==> 写入自定义 Info.plist"
+cp "$WORKDIR/Resources/Info.plist" "$APP_SRC/Info.plist"
 /usr/libexec/PlistBuddy \
   -c "Set :CFBundleExecutable $PRODUCT" \
   -c "Set :CFBundleName $PRODUCT" \
   -c "Set :CFBundleDisplayName 地球Online" \
-  -c "Set :CFBundleIdentifier ${BUNDLE_ID:-com.example.earthonline}" \
+  -c "Set :CFBundleIdentifier ${BUNDLE_ID}" \
   -c "Set :CFBundlePackageType APPL" \
   -c "Set :CFBundleInfoDictionaryVersion 6.0" \
-  -c "Set :CFBundleShortVersionString ${MARKETING_VERSION:-1.0.4}" \
-  -c "Set :CFBundleVersion ${CURRENT_PROJECT_VERSION:-1}" \
-  -c "Set :MinimumOSVersion 17.0" \
-  -c "Set :AMapKey ${AMAP_KEY:-}" \
-  -c "Set :EO_MAP_BACKEND ${EO_MAP_BACKEND:-mapkit}" \
-  "$APP_SRC/Info.plist" >/dev/null 2>&1 || true
+  -c "Set :CFBundleDevelopmentRegion zh_CN" \
+  -c "Set :CFBundleShortVersionString ${MARKETING_VERSION}" \
+  -c "Set :CFBundleVersion ${CURRENT_PROJECT_VERSION}" \
+  -c "Set :AMapKey ${AMAP_KEY}" \
+  -c "Set :EO_MAP_BACKEND ${EO_MAP_BACKEND}" \
+  -c "Add :MinimumOSVersion string 17.0" \
+  -c "Add :CFBundleSupportedPlatforms array" \
+  -c "Add :CFBundleSupportedPlatforms:0 string iPhoneOS" \
+  -c "Add :UIDeviceFamily array" \
+  -c "Add :UIDeviceFamily:0 integer 1" \
+  -c "Add :UIDeviceFamily:1 integer 2" \
+  "$APP_SRC/Info.plist"
+# 转成二进制 plist：剥离 XML 注释，同时是 App Store / 自签名安装的标准形态
+plutil -convert binary1 "$APP_SRC/Info.plist"
 
 echo "== app bundle 内 Info.plist 摘要 =="
 head -n 24 "$APP_SRC/Info.plist" || true
