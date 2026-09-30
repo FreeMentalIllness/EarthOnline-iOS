@@ -34,7 +34,7 @@ grep -aE "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJE
   "$PRODUCT.xcodeproj/project.pbxproj" | head -20 || echo "(未匹配到任何设置)"
 
 if [[ ! -d "$PRODUCT.xcodeproj" ]]; then
-  FOUND="$(ls -1d ./*.xcodeproj 2>/dev/null | head -n 1)"
+  FOUND="$(ls -1d ./*.xcodeproj 2>/dev/null | head -n 1 || true)"
   if [[ -z "$FOUND" ]]; then
     echo "未找到生成的 Xcode 工程：$PRODUCT.xcodeproj" >&2
     exit 1
@@ -49,10 +49,15 @@ rm -rf build
 mkdir -p build
 
 # 版本 / Bundle ID / 地图后端：统一从 xcconfig 读取，避免与 App 设置分叉
-MARKETING_VERSION="$(sed -n 's/^MARKETING_VERSION *= *//p' xcconfig/Common.xcconfig | head -n 1)"
-CURRENT_PROJECT_VERSION="$(sed -n 's/^CURRENT_PROJECT_VERSION *= *//p' xcconfig/Common.xcconfig | head -n 1)"
-EO_MAP_BACKEND="$(sed -n 's/^EO_MAP_BACKEND *= *//p' xcconfig/Common.xcconfig | head -n 1)"
-AMAP_KEY="$(sed -n 's/^AMAP_KEY *= *//p' xcconfig/Secrets.local.xcconfig 2>/dev/null | head -n 1)"
+# 注意：本脚本开了 set -o pipefail，`cmd | head -1` 会让上游收到 SIGPIPE 而整段失败，
+# 所以一律用单条 awk 取值，不用管道。
+MARKETING_VERSION="$(awk -F' *= *' '/^MARKETING_VERSION/ {print $2; exit}' xcconfig/Common.xcconfig)"
+CURRENT_PROJECT_VERSION="$(awk -F' *= *' '/^CURRENT_PROJECT_VERSION/ {print $2; exit}' xcconfig/Common.xcconfig)"
+EO_MAP_BACKEND="$(awk -F' *= *' '/^EO_MAP_BACKEND/ {print $2; exit}' xcconfig/Common.xcconfig)"
+AMAP_KEY=""
+if [[ -f xcconfig/Secrets.local.xcconfig ]]; then
+  AMAP_KEY="$(awk -F' *= *' '/^AMAP_KEY/ {print $2; exit}' xcconfig/Secrets.local.xcconfig)"
+fi
 BUNDLE_ID="com.example.earthonline"
 MARKETING_VERSION="${MARKETING_VERSION:-1.0.4}"
 CURRENT_PROJECT_VERSION="${CURRENT_PROJECT_VERSION:-1}"
