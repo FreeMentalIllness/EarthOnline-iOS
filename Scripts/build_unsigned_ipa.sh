@@ -29,6 +29,10 @@ fi
 # XcodeGen 尝试生成 EarthOnline.xcodeproj/EarthOnline.xcodeproj 并在拷贝临时产物时失败。
 xcodegen generate --spec "$SPEC" --project .
 
+echo "== 工程校验：版本与 Info.plist 设置 =="
+grep -aE "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION" \
+  "$PRODUCT.xcodeproj/project.pbxproj" | head -20 || echo "(未匹配到任何设置)"
+
 if [[ ! -d "$PRODUCT.xcodeproj" ]]; then
   FOUND="$(ls -1d ./*.xcodeproj 2>/dev/null | head -n 1)"
   if [[ -z "$FOUND" ]]; then
