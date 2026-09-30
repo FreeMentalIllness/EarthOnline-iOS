@@ -94,35 +94,43 @@ if [[ ! -d "$APP_SRC" ]]; then
   exit 1
 fi
 
-# 兜底：部分 Xcode 版本会让 GENERATE_INFOPLIST_FILE/INFOPLIST_FILE 的组合失效，导致
-# 自定义条目（App 名、权限文案、ATS、灵动岛开关）全部丢失。这里以仓库内的 Info.plist 为
-# 基准重写产物 plist，用 plutil 展开构建变量并补齐安装必需元数据，最后转二进制去掉注释。
-# 说明：PlistBuddy 遇到空值会直接 abort，所以统一用 plutil（对空值与复杂类型都稳定）。
+# 兜底：Xcode 26 上 GENERATE_INFOPLIST_FILE/INFOPLIST_FILE 的组合会失效，自定义条目
+# （App 名、权限文案、ATS、灵动岛开关、URL Scheme）全部丢失；而 plutil/PlistBuddy 处理
+# 仓库里这份带注释的 XML plist 时又会截断或 abort。这里统一用 python3 + plistlib 生成
+# 二进制 plist，保证 23 个自定义条目与版本号一字不差地写进产物。
 echo "==> 写入自定义 Info.plist"
 INF="$APP_SRC/Info.plist"
-cp "$WORKDIR/Resources/Info.plist" "$INF"
-
-replace_str() { plutil -replace "$1" -string "$2" "$INF"; }
-replace_str CFBundleExecutable "$PRODUCT"
-replace_str CFBundleName "$PRODUCT"
-replace_str CFBundleDisplayName "地球Online"
-replace_str CFBundleIdentifier "$BUNDLE_ID"
-replace_str CFBundlePackageType "APPL"
-replace_str CFBundleInfoDictionaryVersion "6.0"
-replace_str CFBundleDevelopmentRegion "zh_CN"
-replace_str CFBundleShortVersionString "$MARKETING_VERSION"
-replace_str CFBundleVersion "$CURRENT_PROJECT_VERSION"
-replace_str AMapKey "$AMAP_KEY"
-replace_str EO_MAP_BACKEND "$EO_MAP_BACKEND"
-
-insert_or_replace_str() { plutil -insert "$1" -string "$2" "$INF" 2>/dev/null || plutil -replace "$1" -string "$2" "$INF"; }
-insert_or_replace_json() { plutil -insert "$1" -json "$2" "$INF" 2>/dev/null || plutil -replace "$1" -json "$2" "$INF"; }
-insert_or_replace_str MinimumOSVersion "17.0"
-insert_or_replace_json CFBundleSupportedPlatforms '["iPhoneOS"]'
-insert_or_replace_json UIDeviceFamily '[1,2]'
-
-# 转成二进制 plist：剥离 XML 注释，也是安装器期望的标准形态
-plutil -convert binary1 "$INF"
+PY_BIN=""
+for cand in "/usr/bin/python3" "/usr/local/bin/python3" "/opt/homebrew/bin/python3"; do
+  [[ -x "$cand" ]] && { PY_BIN="$cand"; break; }
+done
+if [[ -z "$PY_BIN" ]]; then
+  echo "!! 未找到 python3，跳过 Info.plist 自定义注入（产物仍可安装，但 App 名/版本可能回落）"
+else
+  "$PY_BIN" - "$WORKDIR/Resources/Info.plist" "$INF" \
+    "$MARKETING_VERSION" "$CURRENT_PROJECT_VERSION" "$AMAP_KEY" "$EO_MAP_BACKEND" <<'PYEOF'
+import plistlib, sys
+src, dst, ver, build, amap_key, backend = sys.argv[1:7]
+p = plistlib.load(open(src, 'rb'))
+p['CFBundleExecutable'] = 'EarthOnline'
+p['CFBundleName'] = 'EarthOnline'
+p['CFBundleDisplayName'] = '\u5730\u7403Online'
+p['CFBundleIdentifier'] = 'com.example.earthonline'
+p['CFBundlePackageType'] = 'APPL'
+p['CFBundleInfoDictionaryVersion'] = '6.0'
+p['CFBundleDevelopmentRegion'] = 'zh_CN'
+p['CFBundleShortVersionString'] = ver
+p['CFBundleVersion'] = build
+p['AMapKey'] = amap_key
+p['EO_MAP_BACKEND'] = backend
+p['MinimumOSVersion'] = '17.0'
+p['CFBundleSupportedPlatforms'] = ['iPhoneOS']
+p['UIDeviceFamily'] = [1, 2]
+with open(dst, 'wb') as f:
+    plistlib.dump(p, f, fmt=plistlib.FMT_BINARY)
+print('注入完成，键数：', len(p))
+PYEOF
+fi
 
 echo "== app bundle 内 Info.plist 摘要 =="
 head -n 24 "$APP_SRC/Info.plist" || true
