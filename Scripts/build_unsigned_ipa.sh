@@ -29,10 +29,6 @@ fi
 # XcodeGen 尝试生成 EarthOnline.xcodeproj/EarthOnline.xcodeproj 并在拷贝临时产物时失败。
 xcodegen generate --spec "$SPEC" --project .
 
-echo "== 工程校验：版本与 Info.plist 设置 =="
-grep -aE "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION" \
-  "$PRODUCT.xcodeproj/project.pbxproj" | head -20 || echo "(未匹配到任何设置)"
-
 if [[ ! -d "$PRODUCT.xcodeproj" ]]; then
   FOUND="$(ls -1d ./*.xcodeproj 2>/dev/null | head -n 1 || true)"
   if [[ -z "$FOUND" ]]; then
@@ -65,11 +61,6 @@ EO_MAP_BACKEND="${EO_MAP_BACKEND:-mapkit}"
 echo "==> 版本：${MARKETING_VERSION} (build ${CURRENT_PROJECT_VERSION})，地图后端：${EO_MAP_BACKEND}"
 
 DERIVED="build/DerivedData"
-
-echo "== 已解析构建设置 =="
-xcodebuild -project "$PRODUCT_XCODEPROJ" -target EarthOnline \
-  -configuration "$CONFIGURATION" -sdk iphoneos -showBuildSettings 2>&1 \
-  | grep -E "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION|WRAPPER_NAME|PRODUCT_NAME" || true
 
 echo "==> 编译（关闭代码签名）"
 xcodebuild \
@@ -129,10 +120,6 @@ with open(dst, "wb") as f:
 print("注入完成，键数：", len(data))
 PYEOF
 fi
-
-echo "== app bundle 内 Info.plist 摘要 =="
-head -n 24 "$APP_SRC/Info.plist" || true
-ls -l "$APP_SRC" | head -20
 
 # 清理可能残留的签名痕迹，保证 SideStore 签名链路干净
 find "$APP_SRC" -name "_CodeSignature" -type d -prune -exec rm -rf {} + 2>/dev/null || true

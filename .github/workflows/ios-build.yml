@@ -89,12 +89,6 @@ jobs:
             echo "artifact=EarthOnline-iOS-full" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: 打印关键构建设置
-        run: |
-          echo "== 产物 Info.plist 关键字段 =="
-          /usr/libexec/PlistBuddy -c "Print" \
-            "build/Products/${{ env.CONFIGURATION || 'Release' }}-iphoneos/EarthOnline.app/Info.plist" 2>/dev/null | head -30 || true
-
       - name: 构建未签名 ipa
         run: |
           chmod +x Scripts/build_unsigned_ipa.sh Scripts/verify_ipa.sh
