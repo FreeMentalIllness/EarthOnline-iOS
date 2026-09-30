@@ -25,7 +25,21 @@ if ! command -v xcodegen >/dev/null 2>&1; then
     exit 1
   fi
 fi
-xcodegen generate --spec "$SPEC" --project "EarthOnline.xcodeproj"
+# 注意：--project 接收的是「目录」而不是 .xcodeproj 路径，传文件名会导致
+# XcodeGen 尝试生成 EarthOnline.xcodeproj/EarthOnline.xcodeproj 并在拷贝临时产物时失败。
+xcodegen generate --spec "$SPEC" --project .
+
+if [[ ! -d "$PRODUCT.xcodeproj" ]]; then
+  FOUND="$(ls -1d ./*.xcodeproj 2>/dev/null | head -n 1)"
+  if [[ -z "$FOUND" ]]; then
+    echo "未找到生成的 Xcode 工程：$PRODUCT.xcodeproj" >&2
+    exit 1
+  fi
+  echo "==> 检测到工程：$FOUND"
+  PRODUCT_XCODEPROJ="${FOUND#./}"
+else
+  PRODUCT_XCODEPROJ="$PRODUCT.xcodeproj"
+fi
 
 rm -rf build
 mkdir -p build
@@ -34,7 +48,7 @@ DERIVED="build/DerivedData"
 
 echo "==> 编译（关闭代码签名）"
 xcodebuild \
-  -project "EarthOnline.xcodeproj" \
+  -project "$PRODUCT_XCODEPROJ" \
   -scheme "$SCHEME" \
   -configuration "$CONFIGURATION" \
   -sdk iphoneos \

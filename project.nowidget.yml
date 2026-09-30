@@ -1,6 +1,6 @@
-// 无 Extension 变体：仅主 App 目标，用于 SideStore 因 App ID / 扩展名额受限导致安装失败时的兜底构建。
-// 生成：xcodegen generate --spec project.nowidget.yml
-// 代价：桌面小组件与灵动岛不可用（数据页/任务/地图等主功能不受影响）。
+# 无 Extension 变体：仅主 App 目标，用于 SideStore 因 App ID / 扩展名额受限导致安装失败时的兜底构建。
+# 生成：xcodegen generate --spec project.nowidget.yml
+# 代价：桌面小组件与灵动岛不可用（数据页/任务/地图等主功能不受影响）。
 
 name: EarthOnline
 
