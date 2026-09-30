@@ -4,6 +4,7 @@ import SwiftData
 
 // App Intents 跑在 App 进程里，直接用同一套 SwiftData 容器读写，不需要 App Group。
 
+@MainActor
 private func makeRepository() -> Repository {
     let container = AppContainer.makeContainer()
     let context = ModelContext(container)
