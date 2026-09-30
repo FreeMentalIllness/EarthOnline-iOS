@@ -50,6 +50,11 @@ mkdir -p build
 
 DERIVED="build/DerivedData"
 
+echo "== 已解析构建设置 =="
+xcodebuild -project "$PRODUCT_XCODEPROJ" -target EarthOnline \
+  -configuration "$CONFIGURATION" -sdk iphoneos -showBuildSettings 2>&1 \
+  | grep -E "INFOPLIST_FILE|GENERATE_INFOPLIST_FILE|MARKETING_VERSION|CURRENT_PROJECT_VERSION|WRAPPER_NAME|PRODUCT_NAME" || true
+
 echo "==> 编译（关闭代码签名）"
 xcodebuild \
   -project "$PRODUCT_XCODEPROJ" \
@@ -72,6 +77,10 @@ if [[ ! -d "$APP_SRC" ]]; then
   echo "未找到产物：$APP_SRC" >&2
   exit 1
 fi
+
+echo "== app bundle 内 Info.plist 摘要 =="
+head -n 24 "$APP_SRC/Info.plist" || true
+ls -l "$APP_SRC" | head -20
 
 # 清理可能残留的签名痕迹，保证 SideStore 签名链路干净
 find "$APP_SRC" -name "_CodeSignature" -type d -prune -exec rm -rf {} + 2>/dev/null || true
