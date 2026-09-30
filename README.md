@@ -75,9 +75,20 @@ open EarthOnline.xcodeproj
 | 仓库 | https://github.com/FreeMentalIllness/EarthOnline-iOS |
 | 流水线 | `.github/workflows/ios-build.yml`（macos-15 + Xcode latest-stable + xcodegen） |
 | 触发 | 推送到 main，或手动 `workflow_dispatch`（可选 full / nowidget 变体） |
-| 产物名 | `EarthOnline-iOS-v1.0.4-1-unsigned.ipa` |
+| ipa 产物 | `EarthOnline-iOS-v1.0.4-1-unsigned.ipa`（Artifact：`EarthOnline-iOS-full`，nowidget 变体为 `EarthOnline-iOS-nowidget`） |
+| 模拟器产物 | `EarthOnline-iOS-Simulator.zip`（内含 `EarthOnline.app`，供 Appetize.io 网页验证；Artifact：`EarthOnline-iOS-Simulator`） |
 | 保留期 | Artifact 30 天 |
-| 校验 | `Scripts/verify_ipa.sh` 检查包结构、签名痕迹与限制性 Entitlements |
+| 校验 | `Scripts/verify_ipa.sh` 检查 ipa 包结构、签名痕迹与限制性 Entitlements |
+
+### 无 iPhone 时的验证途径：Appetize.io
+
+Appetize 只吃 **iOS Simulator 构建**（`.app`），吃不了 `.ipa`。流水线每次都会顺带产出一份：
+
+1. Actions 运行页下载 `EarthOnline-iOS-Simulator` 这个 Artifact，得到 `EarthOnline-iOS-Simulator.zip`；
+2. 打开 https://appetize.io ，上传该 zip（免费账号有时长/并发限制，够做界面走查）；
+3. 页面里选择机型与系统版本即可操作。
+
+该 zip 已做适配：二进制为 x86_64 + arm64 双架构（兼容 Appetize 两种运行节点）、`CFBundleSupportedPlatforms` 标为 iPhoneSimulator、剥离了 `PlugIns` 扩展与一切签名痕迹。**小组件、灵动岛、WebDAV 同步在网页版里跑不出来**，能验证的是主页 / 任务 / 背包 / 成就 / 看板 / 地图 / 设置等主流程 UI。
 
 安装方式见 `Docs/SideStore_安装与续签指南.md`。
 
