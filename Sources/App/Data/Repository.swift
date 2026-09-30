@@ -66,7 +66,7 @@ final class Repository: ObservableObject {
         if let status { task.status = status.rawValue }
         if let progress { task.progress = min(100, max(0, progress)) }
         if let note { task.note = note }
-        if let dueDate { task.dueDate = dueDate?.isEmpty == true ? nil : dueDate }
+        if let dueDate { task.dueDate = dueDate.isEmpty ? nil : dueDate }
         task.lastModified = DateUtils.todayKey()
         save()
     }

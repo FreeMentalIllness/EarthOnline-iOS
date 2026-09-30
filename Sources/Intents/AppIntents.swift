@@ -19,9 +19,13 @@ struct AddMemoIntent: AppIntent {
     var text: String
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let repo = makeRepository()
-        repo.addMemo(text: text)
-        return .result(value: "已记录：\(text)")
+        let note = text
+        let message = await MainActor.run { () -> String in
+            let repo = makeRepository()
+            repo.addMemo(text: note)
+            return "已记录：\(note)"
+        }
+        return .result(value: message)
     }
 }
 
@@ -37,15 +41,20 @@ struct AddTaskIntent: AppIntent {
     var category: TaskCategoryEntity
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let repo = makeRepository()
-        let mapped: TaskCategory
-        switch category {
-        case .main: mapped = .main
-        case .side: mapped = .side
-        case .todo: mapped = .todo
+        let title = taskTitle
+        let picked = category
+        let message = await MainActor.run { () -> String in
+            let repo = makeRepository()
+            let mapped: TaskCategory
+            switch picked {
+            case .main: mapped = .main
+            case .side: mapped = .side
+            case .todo: mapped = .todo
+            }
+            repo.addTask(title: title, category: mapped)
+            return "已添加任务：\(title)"
         }
-        repo.addTask(title: taskTitle, category: mapped)
-        return .result(value: "已添加任务：\(taskTitle)")
+        return .result(value: message)
     }
 }
 
@@ -55,14 +64,17 @@ struct TodaySummaryIntent: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult & ReturnsValue<String> {
-        let repo = makeRepository()
-        let profile = repo.profile()
-        let level = DateUtils.age(from: profile.birthDate)
-        let tasks = repo.all(TaskItem.self)
-        let open = tasks.filter { $0.status != TaskStatus.done.rawValue }.count
-        let today = DateUtils.todayKey()
-        let done = tasks.filter { DateUtils.dayOfIso($0.doneAt ?? "") == today }.count
-        return .result(value: "Lv.\(level)，待办 \(open) 项，今日完成 \(done) 项")
+        let message = await MainActor.run { () -> String in
+            let repo = makeRepository()
+            let profile = repo.profile()
+            let level = DateUtils.age(from: profile.birthDate)
+            let tasks = repo.all(TaskItem.self)
+            let openCount = tasks.filter { $0.status != TaskStatus.done.rawValue }.count
+            let today = DateUtils.todayKey()
+            let done = tasks.filter { DateUtils.dayOfIso($0.doneAt ?? "") == today }.count
+            return "Lv.\(level)，待办 \(openCount) 项，今日完成 \(done) 项"
+        }
+        return .result(value: message)
     }
 }
 

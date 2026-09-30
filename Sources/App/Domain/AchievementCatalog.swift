@@ -160,13 +160,13 @@ enum AutoRules {
         AutoRule(key: "adult_18", title: "成年礼", desc: "等级（周岁）达到 18", category: "growth", goal: 18, current: { $0.age }),
         // 综合
         AutoRule(key: "all_rounder", title: "全能玩家", desc: "任务 / 物品 / 收藏 / 日志 / 足迹各至少 1", category: "general",
-                 goal: 5, test: { multiCount($0, 1) == 5 }, current: { multiCount($0, 1) }),
+                 goal: 5, test: { multiCount($0, threshold: 1) == 5 }, current: { multiCount($0, threshold: 1) }),
         AutoRule(key: "five_star", title: "五光十色", desc: "任务20 · 物品20 · 收藏10 · 日志10 · 足迹5", category: "general",
                  goal: 5,
                  test: { $0.tasksDone >= 20 && $0.items >= 20 && $0.collections >= 10 && $0.memos >= 10 && $0.locations >= 5 },
                  current: { [$0.tasksDone >= 20, $0.items >= 20, $0.collections >= 10, $0.memos >= 10, $0.locations >= 5].filter { $0 }.count }),
         AutoRule(key: "grand_slam", title: "大满贯", desc: "任务 / 物品 / 收藏 / 日志 / 足迹各达到 20", category: "general",
-                 goal: 5, test: { multiCount($0, 20) == 5 }, current: { multiCount($0, 20) }),
+                 goal: 5, test: { multiCount($0, threshold: 20) == 5 }, current: { multiCount($0, threshold: 20) }),
         // 彩蛋
         AutoRule(key: "egg_walmart", title: "购物袋玩家", desc: "把性别设置成「沃尔玛购物袋」", category: "egg",
                  goal: 1, test: { $0.gender == "walmart" }, current: { $0.gender == "walmart" ? 1 : 0 }),
