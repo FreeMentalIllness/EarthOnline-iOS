@@ -48,6 +48,17 @@ fi
 rm -rf build
 mkdir -p build
 
+# 版本 / Bundle ID / 地图后端：统一从 xcconfig 读取，避免与 App 设置分叉
+MARKETING_VERSION="$(sed -n 's/^MARKETING_VERSION *= *//p' xcconfig/Common.xcconfig | head -n 1)"
+CURRENT_PROJECT_VERSION="$(sed -n 's/^CURRENT_PROJECT_VERSION *= *//p' xcconfig/Common.xcconfig | head -n 1)"
+EO_MAP_BACKEND="$(sed -n 's/^EO_MAP_BACKEND *= *//p' xcconfig/Common.xcconfig | head -n 1)"
+AMAP_KEY="$(sed -n 's/^AMAP_KEY *= *//p' xcconfig/Secrets.local.xcconfig 2>/dev/null | head -n 1)"
+BUNDLE_ID="com.example.earthonline"
+MARKETING_VERSION="${MARKETING_VERSION:-1.0.4}"
+CURRENT_PROJECT_VERSION="${CURRENT_PROJECT_VERSION:-1}"
+EO_MAP_BACKEND="${EO_MAP_BACKEND:-mapkit}"
+echo "==> 版本：${MARKETING_VERSION} (build ${CURRENT_PROJECT_VERSION})，地图后端：${EO_MAP_BACKEND}"
+
 DERIVED="build/DerivedData"
 
 echo "== 已解析构建设置 =="
@@ -77,6 +88,25 @@ if [[ ! -d "$APP_SRC" ]]; then
   echo "未找到产物：$APP_SRC" >&2
   exit 1
 fi
+
+# 兜底：若 Xcode 走了自动生成 Info.plist 的分支，自定义条目（App 名、权限描述、地图配置、
+# 版本号）会全部丢失。这里统一把仓库里的 Info.plist 合并进产物，再显式展开构建变量，
+# 保证无论 Xcode 版本如何变化，安装的 App 名称/版本/权限文案都是对的。
+echo "==> 合并自定义 Info.plist"
+/usr/libexec/PlistBuddy -c "Merge $WORKDIR/Resources/Info.plist" "$APP_SRC/Info.plist" >/dev/null 2>&1 || true
+/usr/libexec/PlistBuddy \
+  -c "Set :CFBundleExecutable $PRODUCT" \
+  -c "Set :CFBundleName $PRODUCT" \
+  -c "Set :CFBundleDisplayName 地球Online" \
+  -c "Set :CFBundleIdentifier ${BUNDLE_ID:-com.example.earthonline}" \
+  -c "Set :CFBundlePackageType APPL" \
+  -c "Set :CFBundleInfoDictionaryVersion 6.0" \
+  -c "Set :CFBundleShortVersionString ${MARKETING_VERSION:-1.0.4}" \
+  -c "Set :CFBundleVersion ${CURRENT_PROJECT_VERSION:-1}" \
+  -c "Set :MinimumOSVersion 17.0" \
+  -c "Set :AMapKey ${AMAP_KEY:-}" \
+  -c "Set :EO_MAP_BACKEND ${EO_MAP_BACKEND:-mapkit}" \
+  "$APP_SRC/Info.plist" >/dev/null 2>&1 || true
 
 echo "== app bundle 内 Info.plist 摘要 =="
 head -n 24 "$APP_SRC/Info.plist" || true
