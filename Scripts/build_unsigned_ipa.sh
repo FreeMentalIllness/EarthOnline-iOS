@@ -95,31 +95,34 @@ if [[ ! -d "$APP_SRC" ]]; then
 fi
 
 # 兜底：部分 Xcode 版本会让 GENERATE_INFOPLIST_FILE/INFOPLIST_FILE 的组合失效，导致
-# 自定义条目（App 名、权限文案、ATS、灵动岛开关）全部丢失。这里以仓库内的 Info.plist
-# 为基准重写产物里的 Info.plist，并补齐安装必需的系统元数据，最后转二进制去掉注释。
+# 自定义条目（App 名、权限文案、ATS、灵动岛开关）全部丢失。这里以仓库内的 Info.plist 为
+# 基准重写产物 plist，用 plutil 展开构建变量并补齐安装必需元数据，最后转二进制去掉注释。
+# 说明：PlistBuddy 遇到空值会直接 abort，所以统一用 plutil（对空值与复杂类型都稳定）。
 echo "==> 写入自定义 Info.plist"
-cp "$WORKDIR/Resources/Info.plist" "$APP_SRC/Info.plist"
-/usr/libexec/PlistBuddy \
-  -c "Set :CFBundleExecutable $PRODUCT" \
-  -c "Set :CFBundleName $PRODUCT" \
-  -c "Set :CFBundleDisplayName 地球Online" \
-  -c "Set :CFBundleIdentifier ${BUNDLE_ID}" \
-  -c "Set :CFBundlePackageType APPL" \
-  -c "Set :CFBundleInfoDictionaryVersion 6.0" \
-  -c "Set :CFBundleDevelopmentRegion zh_CN" \
-  -c "Set :CFBundleShortVersionString ${MARKETING_VERSION}" \
-  -c "Set :CFBundleVersion ${CURRENT_PROJECT_VERSION}" \
-  -c "Set :AMapKey ${AMAP_KEY}" \
-  -c "Set :EO_MAP_BACKEND ${EO_MAP_BACKEND}" \
-  -c "Add :MinimumOSVersion string 17.0" \
-  -c "Add :CFBundleSupportedPlatforms array" \
-  -c "Add :CFBundleSupportedPlatforms:0 string iPhoneOS" \
-  -c "Add :UIDeviceFamily array" \
-  -c "Add :UIDeviceFamily:0 integer 1" \
-  -c "Add :UIDeviceFamily:1 integer 2" \
-  "$APP_SRC/Info.plist"
-# 转成二进制 plist：剥离 XML 注释，同时是 App Store / 自签名安装的标准形态
-plutil -convert binary1 "$APP_SRC/Info.plist"
+INF="$APP_SRC/Info.plist"
+cp "$WORKDIR/Resources/Info.plist" "$INF"
+
+replace_str() { plutil -replace "$1" -string "$2" "$INF"; }
+replace_str CFBundleExecutable "$PRODUCT"
+replace_str CFBundleName "$PRODUCT"
+replace_str CFBundleDisplayName "地球Online"
+replace_str CFBundleIdentifier "$BUNDLE_ID"
+replace_str CFBundlePackageType "APPL"
+replace_str CFBundleInfoDictionaryVersion "6.0"
+replace_str CFBundleDevelopmentRegion "zh_CN"
+replace_str CFBundleShortVersionString "$MARKETING_VERSION"
+replace_str CFBundleVersion "$CURRENT_PROJECT_VERSION"
+replace_str AMapKey "$AMAP_KEY"
+replace_str EO_MAP_BACKEND "$EO_MAP_BACKEND"
+
+insert_or_replace_str() { plutil -insert "$1" -string "$2" "$INF" 2>/dev/null || plutil -replace "$1" -string "$2" "$INF"; }
+insert_or_replace_json() { plutil -insert "$1" -json "$2" "$INF" 2>/dev/null || plutil -replace "$1" -json "$2" "$INF"; }
+insert_or_replace_str MinimumOSVersion "17.0"
+insert_or_replace_json CFBundleSupportedPlatforms '["iPhoneOS"]'
+insert_or_replace_json UIDeviceFamily '[1,2]'
+
+# 转成二进制 plist：剥离 XML 注释，也是安装器期望的标准形态
+plutil -convert binary1 "$INF"
 
 echo "== app bundle 内 Info.plist 摘要 =="
 head -n 24 "$APP_SRC/Info.plist" || true
