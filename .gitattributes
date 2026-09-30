@@ -1,0 +1,11 @@
+# macOS CI 需要 LF 换行，Windows 本地编辑极易把 shell 脚本转成 CRLF
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Xcode 工程相关
+*.plist text eol=lf
+*.xcconfig text eol=lf
+*.entitlements text eol=lf
+*.swift text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
