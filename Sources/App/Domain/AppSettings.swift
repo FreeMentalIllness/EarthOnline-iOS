@@ -19,6 +19,7 @@ enum SettingKeys {
     static let homeQuickEntries = "home_quick_entries"
     static let customTitle = "custom_title"
     static let skipNextPull = "skip_next_pull"
+    static let lastAutoPull = "last_auto_pull_at"
     static let lastCelebratedLevel = "last_celebrated_level"
 }
 
@@ -112,6 +113,12 @@ final class AppSettings: ObservableObject {
     var skipNextPull: Bool {
         get { store.object(forKey: SettingKeys.skipNextPull) as? Bool ?? false }
         set { store.set(newValue, forKey: SettingKeys.skipNextPull) }
+    }
+
+    /// 上次自动拉取时间戳（节流用：进前台不每次都打网络）
+    var lastAutoPullAt: TimeInterval {
+        get { store.object(forKey: SettingKeys.lastAutoPull) as? Double ?? 0 }
+        set { store.set(newValue, forKey: SettingKeys.lastAutoPull) }
     }
 
     /// 清空用户数据键（等价于 Android clearUserDataKeys）

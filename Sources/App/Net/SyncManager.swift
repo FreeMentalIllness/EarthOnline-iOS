@@ -28,6 +28,9 @@ final class SyncManager: ObservableObject {
 
     // MARK: - 对外动作
 
+    /// 自动拉取最小间隔：频繁切前台不重复打网络（手动「立即拉取」不受限）
+    private static let autoPullMinInterval: TimeInterval = 300
+
     func pullIfNeeded() async {
         guard settings.autoSync, client != nil else { return }
         // 清空数据后的防拉回标记：消费一次即失效
@@ -35,6 +38,9 @@ final class SyncManager: ObservableObject {
             settings.skipNextPull = false
             return
         }
+        let now = Date().timeIntervalSince1970
+        guard now - settings.lastAutoPullAt >= Self.autoPullMinInterval else { return }
+        settings.lastAutoPullAt = now
         await pull(silent: true)
     }
 
@@ -81,8 +87,26 @@ final class SyncManager: ObservableObject {
             let found = entries.contains { $0.href.contains(settings.webdav.fileName) }
             return found ? "连接成功，云端已存在备份文件" : "连接成功，云端暂无备份文件"
         } catch {
-            return error.localizedDescription
+            return Self.friendlyError(error)
         }
+    }
+
+    /// 错误统一转成用户能懂的中文（WebDAV 业务错误自带文案；系统网络错误逐码映射）
+    private static func friendlyError(_ error: Error) -> String {
+        if let dav = error as? WebDavError { return dav.message }
+        if let urlError = error as? URLError {
+            switch urlError.code {
+            case .notConnectedToInternet: return "当前无网络连接，请检查网络后重试"
+            case .timedOut: return "连接超时，请检查网络与服务器地址"
+            case .cannotFindHost: return "无法找到服务器，请检查地址是否正确"
+            case .cannotConnectToHost: return "无法连接服务器，请确认服务是否在线"
+            case .networkConnectionLost: return "连接中断，请重试"
+            case .secureConnectionFailed, .serverCertificateUntrusted: return "HTTPS 连接失败，请检查证书与服务器地址"
+            case .httpTooManyRedirects: return "服务器重定向次数过多，请检查地址"
+            default: break
+            }
+        }
+        return error.localizedDescription
     }
 
     // MARK: - 内部
@@ -94,6 +118,7 @@ final class SyncManager: ObservableObject {
         let remoteTime = payload.exportedAt ?? ""
         let summary = backups.importPayload(payload)
         if !remoteTime.isEmpty { settings.lastSyncAt = remoteTime }
+        settings.lastAutoPullAt = Date().timeIntervalSince1970
         let combined = "拉取完成：新增 \(summary.inserted) / 更新 \(summary.updated)"
         if combined != "拉取完成：新增 0 / 更新 0" {
             ok(combined)
