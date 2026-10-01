@@ -1,8 +1,10 @@
-# iOS 端实机验收清单（v1.0.4，2026-10-01）
+# iOS 端实机验收清单（v1.0.5，2026-10-01）
 
-> 适用产物：`EarthOnline-iOS-v1.0.4-1-unsigned.ipa`（SideStore 安装）/ `EarthOnline-iOS-Simulator.zip`（Appetize.io 网页验证）。
+> 适用产物：`EarthOnline-iOS-v1.0.5-2-unsigned.ipa`（SideStore 安装）/ `EarthOnline-iOS-Simulator.zip`（Appetize.io 网页验证）。
 > 本清单列明**无法在代码级/云端构建验证**、必须在真实 iPhone/iPad 上人工确认的项。走查后请把结果（通过/不通过+现象）直接标注在本文档。
 > 验收通过前不得触发正式 Release（红线：正式发布须用户下令且必须带 .ipa 产物）。
+>
+> **⏸️ 总体状态（2026-10-01 v1.0.5 收尾确认）：所有真机相关项——包括但不限于 SwiftData 升级迁移、触觉反馈强度、灵动岛 Live Activities、小组件刷新、通知授权与点按路由——全部标注「暂缓」，等待用户拿到真实设备后统一执行；云端构建与代码级验证均已通过，不阻塞产物归档。**
 
 ## 一、安装与自签名（SideStore）
 

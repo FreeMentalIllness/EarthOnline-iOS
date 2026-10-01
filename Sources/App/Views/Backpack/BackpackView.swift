@@ -14,6 +14,12 @@ struct BackpackView: View {
     @State private var editingItem: BagItem? = nil
     @State private var editingCollection: CollectionItem? = nil
     @State private var showCategoryManager: Bool = false
+    @State private var showRecycleBin: Bool = false
+
+    /// 回收站内背包类条目数（物品+收藏，用于轻提示）
+    private var deletedCount: Int {
+        items.filter { $0.deletedAt != nil }.count + collections.filter { $0.deletedAt != nil }.count
+    }
 
     private var scope: String { tab == 0 ? "item" : "collection" }
 
@@ -39,6 +45,9 @@ struct BackpackView: View {
                     Menu {
                         Button { showCreate = true } label: { Label(tab == 0 ? "新增物品" : "新增收藏", systemImage: "plus") }
                         Button { showCategoryManager = true } label: { Label("管理分类", systemImage: "folder") }
+                        Button { showRecycleBin = true } label: {
+                            Label(deletedCount > 0 ? "回收站（\(deletedCount)）" : "回收站", systemImage: "trash.circle")
+                        }
                     } label: { Image(systemName: "ellipsis.circle") }
                 }
             }
@@ -58,6 +67,7 @@ struct BackpackView: View {
             .sheet(isPresented: $showCategoryManager) {
                 CategoryManagerView(scope: scope)
             }
+            .navigationDestination(isPresented: $showRecycleBin) { RecycleBinView() }
             .sheet(item: $editingItem) { item in
                 ItemEditorView(categories: categories.filter { $0.scope == scope },
                                initial: ItemEditorView.Draft(name: item.name, desc: item.desc ?? "", category: item.category)) { name, desc, category in

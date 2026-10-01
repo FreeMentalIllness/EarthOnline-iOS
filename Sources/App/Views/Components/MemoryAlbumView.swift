@@ -5,7 +5,8 @@ import SwiftUI
 struct MemoryAlbumView: View {
     @EnvironmentObject private var session: AppSession
 
-    @State private var selection: PhotosPickerItem? = nil
+    @State private var selection: [PhotosPickerItem] = []
+    @State private var isImporting: Bool = false
     @State private var notice: String = ""
 
     private var photos: [CollectionItem] {
@@ -23,19 +24,19 @@ struct MemoryAlbumView: View {
         .navigationTitle("记忆相册")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                PhotosPicker(selection: $selection, matching: .images, photoLibrary: .shared()) {
-                    Image(systemName: "plus")
+                PhotosPicker(selection: $selection, maxSelectionCount: 20, selectionBehavior: .ordered, matching: .images, photoLibrary: .shared()) {
+                    if isImporting {
+                        ProgressView()
+                    } else {
+                        Image(systemName: "plus")
+                    }
                 }
+                .disabled(isImporting)
             }
         }
         .onChange(of: selection) { _, newValue in
-            guard let newValue else { return }
-            Task {
-                if let data = try? await newValue.loadTransferable(type: Data.self) {
-                    await MainActor.run { importPhoto(data) }
-                }
-                await MainActor.run { selection = nil }
-            }
+            guard !newValue.isEmpty, !isImporting else { return }
+            Task { await importPhotos(newValue) }
         }
         .alert(notice, isPresented: Binding(get: { !notice.isEmpty }, set: { _ in notice = "" })) {
             Button("知道了") { notice = "" }
@@ -89,21 +90,35 @@ struct MemoryAlbumView: View {
         }
     }
 
-    private func importPhoto(_ data: Data) {
-        // 原图完整落盘不重编码（与头像/壁纸同规）
-        let filename = "memory_\(Int(Date().timeIntervalSince1970)).jpg"
-        guard let relative = LocalFileStore.save(data, into: "memory", filename: filename) else {
-            notice = "照片保存失败，请重试"
-            return
+    private func importPhotos(_ items: [PhotosPickerItem]) async {
+        await MainActor.run { isImporting = true }
+        var ok = 0
+        var lastRelative: String? = nil
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self) {
+                let filename = "memory_\(Int(Date().timeIntervalSince1970 * 1000))_\(ok).jpg"
+                if let relative = LocalFileStore.save(data, into: "memory", filename: filename) {
+                    _ = session.repo.addCollection(
+                        title: "老照片 · \(DateUtils.todayKey())",
+                        note: nil,
+                        category: "memory_album",
+                        fileUri: relative,
+                        fileMetaJson: "{\"source\":\"memory_album\"}"
+                    )
+                    lastRelative = relative
+                    ok += 1
+                }
+            }
         }
-        _ = session.repo.addCollection(
-            title: "老照片 · \(DateUtils.todayKey())",
-            note: nil,
-            category: "memory_album",
-            fileUri: relative,
-            fileMetaJson: "{\"source\":\"memory_album\"}"
-        )
-        session.didMutateData()
-        notice = "已收入相册"
+        await MainActor.run {
+            isImporting = false
+            selection = []
+            if ok > 0 {
+                session.didMutateData()
+                notice = ok == 1 ? "已收入相册" : "已收入 \(ok) 张照片"
+            } else {
+                notice = "照片保存失败，请重试"
+            }
+        }
     }
 }

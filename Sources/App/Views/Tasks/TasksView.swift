@@ -10,6 +10,8 @@ struct TasksView: View {
     @State private var search: String = ""
     @State private var editing: TaskItem? = nil
     @State private var showCreate: Bool = false
+    // v1.0.5 回收站轻提示
+    @State private var showRecycleBin: Bool = false
     // v1.0.5 批量操作
     @State private var selectMode: Bool = false
     @State private var selected: Set<PersistentIdentifier> = []
@@ -50,6 +52,8 @@ struct TasksView: View {
                     }
                 }
             }
+            .safeAreaInset(edge: .top) { recycleHintBar }
+            .navigationDestination(isPresented: $showRecycleBin) { RecycleBinView() }
             .searchable(text: $search, prompt: "搜索任务")
             .safeAreaInset(edge: .bottom) {
                 if selectMode { batchBar }
@@ -66,6 +70,37 @@ struct TasksView: View {
             .sheet(isPresented: $showExportShare) {
                 if let exportData { ShareSheet(items: [exportData]) }
             }
+        }
+    }
+
+    // MARK: 回收站轻提示（v1.0.5：有最近删除条目才显示，点击进入回收站）
+
+    private var deletedTaskCount: Int {
+        allTasks.filter { $0.deletedAt != nil }.count
+    }
+
+    @ViewBuilder
+    private var recycleHintBar: some View {
+        if deletedTaskCount > 0 {
+            Button {
+                showRecycleBin = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash.circle")
+                    Text("最近删除 \(deletedTaskCount) 条，30 天内可恢复")
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption2)
+                }
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(Theme.border, lineWidth: 1))
+                .padding(.horizontal, 16)
+            }
+            .buttonStyle(.plain)
         }
     }
 
