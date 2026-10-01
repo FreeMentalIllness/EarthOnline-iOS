@@ -44,8 +44,8 @@ enum ImportParsers {
                 errors.append("第 \(rowIndex + 1) 行缺少标题，已跳过")
                 continue
             }
-            var dto = TaskDTO(id: UUID().uuidString, title: title)
-            if let id = map["id"], !id.trimmingCharacters(in: .whitespaces).isEmpty { dto.id = id.trimmingCharacters(in: .whitespaces) }
+            var dto = TaskDTO(id: map["id"]?.trimmingCharacters(in: .whitespaces).isEmpty == false ? map["id"]!.trimmingCharacters(in: .whitespaces) : UUID().uuidString)
+            dto.title = title
             if let category = map["category"], TaskCategory(rawValue: category.trimmingCharacters(in: .whitespaces)) != nil {
                 dto.category = category.trimmingCharacters(in: .whitespaces)
             } else {
@@ -123,9 +123,10 @@ enum ImportParsers {
                 let done = body.lowercased().hasPrefix("[x]")
                 let title = body.dropFirst(3).trimmingCharacters(in: .whitespaces)
                 guard !title.isEmpty else { continue }
-                var dto = TaskDTO(id: UUID().uuidString, title: title,
-                                  category: TaskCategory.todo.rawValue,
-                                  status: done ? TaskStatus.done.rawValue : TaskStatus.active.rawValue)
+                var dto = TaskDTO(id: UUID().uuidString)
+                dto.title = title
+                dto.category = TaskCategory.todo.rawValue
+                dto.status = done ? TaskStatus.done.rawValue : TaskStatus.active.rawValue
                 dto.progress = done ? 100 : 0
                 dto.doneAt = done ? (contextDay.flatMap(DateUtils.dayToIso) ?? DateUtils.isoNow()) : nil
                 dto.createdAt = contextDay.flatMap(DateUtils.dayToIso) ?? DateUtils.isoNow()

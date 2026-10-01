@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 /// v1.0.5 记忆相册：老照片收藏（触发隐藏成就 egg_memory_album）
@@ -15,20 +16,8 @@ struct MemoryAlbumView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
-                if photos.isEmpty {
-                    EmptyStateView(emoji: "🖼️", title: "相册还没有照片",
-                                   subtitle: "导入第一张老照片，唤醒一段旧时光")
-                        .padding(.top, 40)
-                } else {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 10) {
-                        ForEach(photos, id: \.persistentModelID) { entry in
-                            photoCell(entry)
-                        }
-                    }
-                }
-            }
-            .padding(16)
+            albumContent
+                .padding(16)
         }
         .background(Theme.background.ignoresSafeArea())
         .navigationTitle("记忆相册")
@@ -50,6 +39,21 @@ struct MemoryAlbumView: View {
         }
         .alert(notice, isPresented: Binding(get: { !notice.isEmpty }, set: { _ in notice = "" })) {
             Button("知道了") { notice = "" }
+        }
+    }
+
+    @ViewBuilder
+    private var albumContent: some View {
+        if photos.isEmpty {
+            EmptyStateView(emoji: "🖼️", title: "相册还没有照片",
+                           subtitle: "导入第一张老照片，唤醒一段旧时光")
+                .padding(.top, 40)
+        } else {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 104), spacing: 10)], spacing: 10) {
+                ForEach(photos, id: \.persistentModelID) { entry in
+                    photoCell(entry)
+                }
+            }
         }
     }
 
