@@ -10,6 +10,8 @@ struct UpdateAlert: Identifiable, Equatable {
 }
 
 /// GitHub Releases 版本检查（零依赖 URLSession）
+/// 整类 MainActor：要读写 AppSession 的 @Published 状态，UI 调用点都在主线程
+@MainActor
 final class VersionCheckService {
     /// 仓库 Releases 页面（浏览器打开用）
     static let releasesPage = URL(string: "https://github.com/FreeMentalIllness/EarthOnline-iOS/releases")!
