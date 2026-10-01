@@ -264,9 +264,31 @@ struct SettingsView: View {
             LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "-")
             LabeledContent("地图后端", value: MapBackendResolver.useAMap ? "高德 AMap" : "系统 MapKit")
             LabeledContent("数据共享", value: SharedStore.containerURL() == nil ? "未启用 App Group" : "App Group 已启用")
+            Button {
+                VersionCheckService.manualCheck(session: session)
+            } label: {
+                HStack {
+                    Text("检查更新")
+                    if session.isCheckingUpdate {
+                        Spacer()
+                        ProgressView()
+                    }
+                }
+            }
+            Button {
+                openReleases()
+            } label: {
+                Label("前往 Releases 页面", systemImage: "safari")
+            }
         } header: { Text("关于") } footer: {
-            Text("地球Online v1.0.4 · Web / Android / Windows / iOS 四端同源")
+            Text("地球Online v1.0.4 · Web / Android / Windows / iOS 四端同源。更新方式：下载新 .ipa 后在 SideStore 覆盖安装。")
         }
+    }
+
+    @Environment(\.openURL) private var openReleasesURL
+
+    private func openReleases() {
+        openReleasesURL(VersionCheckService.releasesPage)
     }
 
     private var appVersion: String {

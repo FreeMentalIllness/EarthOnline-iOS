@@ -16,6 +16,9 @@ final class AppSession: ObservableObject {
     @Published var isReady: Bool = false
     @Published var stats = LifeStats()
     @Published var celebrated: [AchievementItem] = []
+    /// 版本检查（SideStore 约束：仅提示引导，不做应用内更新）
+    @Published var isCheckingUpdate: Bool = false
+    @Published var updateAlert: UpdateAlert?
 
     func attach(context: ModelContext) {
         guard !isReady else { return }

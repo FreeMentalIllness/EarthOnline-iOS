@@ -92,7 +92,7 @@ final class SyncManager: ObservableObject {
     }
 
     /// 错误统一转成用户能懂的中文（WebDAV 业务错误自带文案；系统网络错误逐码映射）
-    private static func friendlyError(_ error: Error) -> String {
+    static func friendlyError(_ error: Error) -> String {
         if let dav = error as? WebDavError { return dav.message }
         if let urlError = error as? URLError {
             switch urlError.code {

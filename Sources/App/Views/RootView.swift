@@ -46,6 +46,7 @@ enum AppTab: String, CaseIterable, Identifiable {
 struct RootView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.openURL) private var openURL
     @EnvironmentObject private var session: AppSession
 
     @State private var tab: AppTab = .home
@@ -57,6 +58,20 @@ struct RootView: View {
             .background(BackdropView())
             .task {
                 if !session.isReady { session.attach(context: context) }
+                // 启动 2 秒后自动检查新版本（静默失败，24h 节流）
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+                VersionCheckService.autoCheckIfNeeded(session: session)
+            }
+            .alert("版本更新", isPresented: Binding(
+                get: { session.updateAlert != nil },
+                set: { if !$0 { session.updateAlert = nil } }
+            ), presenting: session.updateAlert) { alert in
+                if let url = alert.url {
+                    Button("前往下载") { openURL(url) }
+                }
+                Button("知道了", role: .cancel) {}
+            } message: { alert in
+                Text(alert.message)
             }
             .onOpenURL { url in
                 if let target = AppTab.from(url) { tab = target }
