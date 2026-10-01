@@ -1,6 +1,7 @@
 import PhotosUI
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var session: AppSession
@@ -19,6 +20,8 @@ struct SettingsView: View {
 
     @State private var showClearConfirm: Bool = false
     @State private var showImporter: Bool = false
+    @State private var showCSVImporter: Bool = false
+    @State private var showMDImporter: Bool = false
     @State private var exportURL: URL? = nil
     @State private var showShare: Bool = false
     @State private var notice: String = ""
@@ -67,6 +70,46 @@ struct SettingsView: View {
                     notice = "选择文件失败：\(error.localizedDescription)"
                 }
             }
+            .fileImporter(isPresented: $showCSVImporter, allowedContentTypes: [csvType]) { result in
+                handleStructuredImport(result) { text in
+                    let (dtos, errors) = ImportParsers.parseTasksCSV(text)
+                    guard !dtos.isEmpty else { return "CSV 里没有可导入的任务行" }
+                    _ = session.backups.importPayload(BackupPayload(tasks: dtos))
+                    session.refresh()
+                    let tail = errors.isEmpty ? "" : "；" + errors.prefix(3).joined(separator: "、")
+                    return "CSV 导入完成：\(dtos.count) 条任务（按主键合并）\(tail)"
+                }
+            }
+            .fileImporter(isPresented: $showMDImporter, allowedContentTypes: [.plainText]) { result in
+                handleStructuredImport(result) { text in
+                    let (tasks, memos) = ImportParsers.parseMarkdown(text)
+                    guard !tasks.isEmpty || !memos.isEmpty else { return "Markdown 里没有可识别的条目（- [ ] 待办 / - 日志）" }
+                    _ = session.backups.importPayload(BackupPayload(tasks: tasks.isEmpty ? nil : tasks, memos: memos.isEmpty ? nil : memos))
+                    session.refresh()
+                    return "Markdown 导入完成：任务 \(tasks.count) 条 · 日志 \(memos.count) 条（按主键合并）"
+                }
+            }
+        }
+    }
+
+    private var csvType: UTType {
+        UTType("public.comma-separated-values") ?? .commaSeparatedText
+    }
+
+    /// CSV / Markdown 导入统一入口：读文本 → 解析 → 按主键合并 → 反馈
+    private func handleStructuredImport(_ result: Result<URL, Error>, parse: @MainActor (String) -> String) {
+        switch result {
+        case .success(let url):
+            guard url.startAccessingSecurityScopedResource() else { return }
+            defer { url.stopAccessingSecurityScopedResource() }
+            do {
+                let text = try String(contentsOf: url, encoding: .utf8)
+                notice = parse(text)
+            } catch {
+                notice = "导入失败：\(error.localizedDescription)"
+            }
+        case .failure(let error):
+            notice = "选择文件失败：\(error.localizedDescription)"
         }
     }
 
@@ -245,6 +288,11 @@ struct SettingsView: View {
                 }
             } label: { Label("导出备份（earth-online-backup.json）", systemImage: "square.and.arrow.up") }
             Button { showImporter = true } label: { Label("从备份文件导入", systemImage: "square.and.arrow.down") }
+            Button { showCSVImporter = true } label: { Label("从 CSV 导入任务", systemImage: "tablecells") }
+            Button { showMDImporter = true } label: { Label("从 Markdown 导入日记", systemImage: "doc.richtext") }
+            NavigationLink(destination: RecycleBinView()) {
+                Label("回收站", systemImage: "trash.circle")
+            }
             Button(role: .destructive) { showClearConfirm = true } label: { Label("清空全部数据", systemImage: "trash") }
         } header: { Text("数据管理") } footer: {
             Text("导出后会写入「文件 App → EarthOnline」目录，可通过 iTunes/访达直接拷出；跨端推荐用 WebDAV。")
@@ -281,7 +329,7 @@ struct SettingsView: View {
                 Label("前往 Releases 页面", systemImage: "safari")
             }
         } header: { Text("关于") } footer: {
-            Text("地球Online v1.0.4 · Web / Android / Windows / iOS 四端同源。更新方式：下载新 .ipa 后在 SideStore 覆盖安装。")
+            Text("地球Online v1.0.5 · Web / Android / Windows / iOS 四端同源。更新方式：下载新 .ipa 后在 SideStore 覆盖安装（签名 7 天有效）。")
         }
     }
 

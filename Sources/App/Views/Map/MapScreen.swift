@@ -30,7 +30,7 @@ struct MapScreen: View {
             .navigationTitle("世界足迹")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Text("\(pins.count) 个坐标")
+                    Text("\(pins.filter { $0.deletedAt == nil }.count) 个坐标")
                         .font(.caption)
                         .foregroundStyle(Theme.textSecondary)
                 }
@@ -75,13 +75,14 @@ private struct MapKitFallback: View {
 
     var body: some View {
         Group {
-            if pins.isEmpty {
+            let activePins = pins.filter { $0.deletedAt == nil }
+            if activePins.isEmpty {
                 EmptyStateView(emoji: "🗺️", title: "还没有足迹",
                                subtitle: "右下角加号记录第一个去过的地方")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 Map(position: $camera) {
-                    ForEach(pins, id: \.persistentModelID) { pin in
+                    ForEach(activePins, id: \.persistentModelID) { pin in
                         Marker(pin.name.isEmpty ? "未命名" : pin.name,
                                systemImage: "mappin.circle.fill",
                                coordinate: CLLocationCoordinate2D(latitude: pin.lat, longitude: pin.lng))
@@ -211,7 +212,7 @@ struct LocationDetailView: View {
                 }
                 Section {
                     Button(role: .destructive) {
-                        session.repo.delete(pin)
+                        session.repo.softDelete(pin)
                         session.didMutateData()
                         dismiss()
                     } label: { Text("删除这条足迹") }

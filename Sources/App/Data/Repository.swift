@@ -24,6 +24,59 @@ final class Repository: ObservableObject {
         save()
     }
 
+    // MARK: - 回收站（v1.0.5：删除先进回收站，30 天可恢复）
+
+    static let recycleBinRetentionDays = 30
+
+    /// 只看未删除数据（导出 / 统计 / UI 一律走这里）
+    func active<T: SoftDeletable>(_ type: T.Type) -> [T] {
+        all(type).filter { $0.deletedAt == nil }
+    }
+
+    /// 回收站内容（按删除时间倒序）
+    func recycleBin() -> [SoftDeletable] {
+        var merged: [SoftDeletable] = []
+        merged.append(contentsOf: all(TaskItem.self).filter { $0.deletedAt != nil })
+        merged.append(contentsOf: all(MemoItem.self).filter { $0.deletedAt != nil })
+        merged.append(contentsOf: all(BagItem.self).filter { $0.deletedAt != nil })
+        merged.append(contentsOf: all(CollectionItem.self).filter { $0.deletedAt != nil })
+        merged.append(contentsOf: all(LocationPin.self).filter { $0.deletedAt != nil })
+        return merged.sorted { ($0.deletedAt ?? Date.distantPast) > ($1.deletedAt ?? Date.distantPast) }
+    }
+
+    func softDelete(_ object: SoftDeletable) {
+        object.deletedAt = Date()
+        save()
+    }
+
+    func softDeleteAll(_ objects: [SoftDeletable]) {
+        objects.forEach { $0.deletedAt = Date() }
+        save()
+    }
+
+    func restore(_ object: SoftDeletable) {
+        object.deletedAt = nil
+        save()
+    }
+
+    func purge(_ object: SoftDeletable) {
+        context.delete(object)
+        save()
+    }
+
+    /// 清空回收站（物理删除）
+    func emptyRecycleBin() {
+        recycleBin().forEach { context.delete($0) }
+        save()
+    }
+
+    /// 启动时清理超过保留期的回收站条目
+    func purgeExpiredDeleted() {
+        let cutoff = Date().addingTimeInterval(-Double(Self.recycleBinRetentionDays) * 86400)
+        recycleBin().filter { ($0.deletedAt ?? Date()) < cutoff }.forEach { context.delete($0) }
+        save()
+    }
+
     // MARK: - 个人资料
 
     @discardableResult

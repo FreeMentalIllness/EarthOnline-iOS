@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct TasksView: View {
     @EnvironmentObject private var session: AppSession
@@ -9,6 +10,11 @@ struct TasksView: View {
     @State private var search: String = ""
     @State private var editing: TaskItem? = nil
     @State private var showCreate: Bool = false
+    // v1.0.5 批量操作
+    @State private var selectMode: Bool = false
+    @State private var selected: Set<PersistentIdentifier> = []
+    @State private var exportData: Data? = nil
+    @State private var showExportShare: Bool = false
 
     var body: some View {
         NavigationStack {
@@ -33,10 +39,21 @@ struct TasksView: View {
             .navigationTitle("任务")
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button { showCreate = true } label: { Image(systemName: "plus") }
+                    HStack(spacing: 14) {
+                        Button {
+                            selectMode.toggle()
+                            if !selectMode { selected = [] }
+                        } label: {
+                            Image(systemName: selectMode ? "checkmark.circle" : "checklist")
+                        }
+                        Button { showCreate = true } label: { Image(systemName: "plus") }
+                    }
                 }
             }
             .searchable(text: $search, prompt: "搜索任务")
+            .safeAreaInset(edge: .bottom) {
+                if selectMode { batchBar }
+            }
             .sheet(isPresented: $showCreate) {
                 TaskEditorView(category: category) { title, category, dueDate, note in
                     _ = session.repo.addTask(title: title, category: category, dueDate: dueDate, note: note)
@@ -46,7 +63,56 @@ struct TasksView: View {
             .sheet(item: $editing) { task in
                 TaskDetailView(task: task)
             }
+            .sheet(isPresented: $showExportShare) {
+                if let exportData { ShareSheet(items: [exportData]) }
+            }
         }
+    }
+
+    // MARK: 批量操作栏（v1.0.5）
+
+    private var selectedTasks: [TaskItem] {
+        allTasks.filter { selected.contains($0.persistentModelID) }
+    }
+
+    private var batchBar: some View {
+        HStack(spacing: 12) {
+            Text("已选 \(selected.count) 项")
+                .font(.footnote)
+                .foregroundStyle(Theme.textSecondary)
+            Spacer(minLength: 0)
+            Button {
+                selectedTasks.forEach { session.repo.toggleTaskDone($0) }
+                session.didMutateData()
+                CelebrationFeedback.fire(combo: selected.count)
+            } label: { Label("完成", systemImage: "checkmark.circle.fill") }
+            .disabled(selected.isEmpty)
+
+            Button(role: .destructive) {
+                session.repo.softDeleteAll(selectedTasks)
+                session.didMutateData()
+                selected = []
+            } label: { Label("删除", systemImage: "trash") }
+            .disabled(selected.isEmpty)
+
+            Button {
+                let dtos = selectedTasks.map { task -> TaskDTO in
+                    TaskDTO(id: task.recordId, parentId: task.parentId, category: task.category, title: task.title,
+                            status: task.status, progress: task.progress, note: task.note, dueDate: task.dueDate,
+                            createdAt: task.createdAt, lastModified: task.lastModified, doneAt: task.doneAt, order: task.sortOrder)
+                }
+                if let data = try? JSONEncoder().encode(BackupPayload(tasks: dtos)) {
+                    exportData = data
+                    showExportShare = true
+                }
+            } label: { Label("导出", systemImage: "square.and.arrow.up") }
+            .disabled(selected.isEmpty)
+        }
+        .font(.footnote)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(Theme.surface, in: Rectangle())
+        .overlay(alignment: .top) { Rectangle().fill(Theme.border).frame(height: 1) }
     }
 
     @ViewBuilder
@@ -59,12 +125,30 @@ struct TasksView: View {
         } else {
             List {
                 ForEach(list, id: \.persistentModelID) { task in
-                    TaskRow(task: task)
+                    BatchableTaskRow(task: task, selectMode: selectMode,
+                                     isSelected: selected.contains(task.persistentModelID),
+                                     onToggleSelect: {
+                                         if selected.contains(task.persistentModelID) {
+                                             selected.remove(task.persistentModelID)
+                                         } else {
+                                             selected.insert(task.persistentModelID)
+                                         }
+                                     })
                         .contentShape(Rectangle())
-                        .onTapGesture { editing = task }
+                        .onTapGesture {
+                            if selectMode {
+                                if selected.contains(task.persistentModelID) {
+                                    selected.remove(task.persistentModelID)
+                                } else {
+                                    selected.insert(task.persistentModelID)
+                                }
+                            } else {
+                                editing = task
+                            }
+                        }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                session.repo.delete(task)
+                                session.repo.softDelete(task)
                                 session.didMutateData()
                             } label: { Label("删除", systemImage: "trash") }
                         }
@@ -78,6 +162,7 @@ struct TasksView: View {
     private var filteredTasks: [TaskItem] {
         let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return allTasks.filter { task in
+            guard task.deletedAt == nil else { return false }
             guard task.category == category.rawValue else { return false }
             if session.settings.hideDoneTasks && task.status == TaskStatus.done.rawValue { return false }
             guard !keyword.isEmpty else { return true }
@@ -103,10 +188,9 @@ struct TaskRow: View {
             Button {
                 session.repo.toggleTaskDone(task)
                 session.didMutateData()
+                CelebrationFeedback.fire(combo: CelebrationFeedback.bump())
             } label: {
-                Image(systemName: task.status == TaskStatus.done.rawValue ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(task.status == TaskStatus.done.rawValue ? Theme.accent : Theme.textMuted)
-                    .font(.title3)
+                CheckGlyph(done: task.status == TaskStatus.done.rawValue)
             }
             .buttonStyle(.plain)
 
@@ -137,6 +221,91 @@ struct TaskRow: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 6)
+    }
+}
+
+/// 任务行（批量模式可选）
+struct BatchableTaskRow: View {
+    @EnvironmentObject private var session: AppSession
+    let task: TaskItem
+    let selectMode: Bool
+    let isSelected: Bool
+    let onToggleSelect: () -> Void
+
+    var body: some View {
+        Group {
+            if selectMode {
+                HStack(alignment: .top, spacing: 12) {
+                    Button(action: onToggleSelect) {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundStyle(isSelected ? Theme.accent : Theme.textMuted)
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    // 只读正文（选择模式下勾选钮被选择圈替代）
+                    Text(task.title)
+                        .font(.body)
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer(minLength: 0)
+                }
+            } else {
+                TaskRow(task: task)
+            }
+        }
+        .padding(.vertical, 6)
+    }
+}
+
+/// 勾选图标（含完成时的光晕动效）
+struct CheckGlyph: View {
+    let done: Bool
+    @State private var pulse: Bool = false
+
+    var body: some View {
+        Image(systemName: done ? "checkmark.circle.fill" : "circle")
+            .foregroundStyle(done ? Theme.accent : Theme.textMuted)
+            .font(.title3)
+            .scaleEffect(pulse ? 1.25 : 1)
+            .shadow(color: done && pulse ? Theme.accent.opacity(0.6) : .clear, radius: 8)
+            .onChange(of: done) { _, newValue in
+                guard newValue else { return }
+                withAnimation(.easeOut(duration: 0.18)) { pulse = true }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.22) {
+                    withAnimation(.easeIn(duration: 0.2)) { pulse = false }
+                }
+            }
+    }
+}
+
+/// v1.0.5 完成庆祝反馈：触觉 + 光晕，10 秒窗口内连击渐强
+enum CelebrationFeedback {
+    private static let window: TimeInterval = 10
+    private static var lastFire: Date? = nil
+    private static var combo: Int = 0
+
+    @discardableResult
+    static func bump() -> Int {
+        let now = Date()
+        if let lastFire, now.timeIntervalSince(lastFire) <= window {
+            combo += 1
+        } else {
+            combo = 1
+        }
+        lastFire = now
+        return combo
+    }
+
+    static func fire(combo: Int) {
+        let generator = UINotificationFeedbackGenerator()
+        switch combo {
+        case ..<2: generator.notificationOccurred(.success)
+        case 2...4:
+            generator.notificationOccurred(.success)
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+        default:
+            generator.notificationOccurred(.success)
+            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+        }
     }
 }
 
@@ -263,7 +432,11 @@ struct TaskEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
                         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
-                        guard !trimmed.isEmpty else { return }
+                        guard !trimmed.isEmpty else {
+                            EggCounters.registerBlankTitleTry() // 空白也是一种态度
+                            return
+                        }
+                        EggCounters.resetBlankTitleTries()
                         let due = dueEnabled ? DateUtils.dayKeyFormatter.string(from: dueDate) : nil
                         let cleanedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
                         onCreate(trimmed, selected, due, cleanedNote.isEmpty ? nil : cleanedNote)

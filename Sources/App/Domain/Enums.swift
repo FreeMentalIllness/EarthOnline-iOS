@@ -195,6 +195,40 @@ enum DateUtils {
         return best
     }
 
+    /// 当前连续记录天数（截至今天；今天还没记录也容忍昨日衔接）
+    static func currentStreak(days: [String]) -> Int {
+        let sorted = Array(Set(days.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty })).sorted()
+        guard let last = sorted.last, let lastDate = dayKeyFormatter.date(from: last) else { return 0 }
+        // 今天或昨天有记录才可能算「连续中」
+        guard daysBetween(from: lastDate) <= 1 else { return 0 }
+        var streak = 1
+        var cursor = lastDate
+        for day in sorted.dropLast().reversed() {
+            guard let date = dayKeyFormatter.date(from: day),
+                  let delta = Calendar.current.dateComponents([.day], from: date, to: cursor).day, delta == 1 else { break }
+            streak += 1
+            cursor = date
+        }
+        return streak
+    }
+
+    /// 日键的「月-日」后缀（历年今日匹配用）
+    static func monthDay(of day: String) -> String {
+        day.count >= 10 ? String(day.suffix(5)) : ""
+    }
+
+    /// 时段问候（带一句心情后缀的活力短语由调用方拼接）
+    static func moodFlavor(_ mood: String) -> String {
+        switch mood {
+        case "great": return "状态拉满，去创造点什么"
+        case "good": return "顺风局，稳住节奏"
+        case "normal": return "平平淡淡也是真实日常"
+        case "tired": return "累了就慢一点，记录也是一种休息"
+        case "down": return "低气压会过去的，先记一笔"
+        default: return ""
+        }
+    }
+
     /// 相对时间中文描述
     static func relative(_ iso: String) -> String {
         guard let date = isoFormatter.date(from: iso) else { return "" }

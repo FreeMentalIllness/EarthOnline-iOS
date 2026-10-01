@@ -138,6 +138,8 @@ final class SyncManager: ObservableObject {
         defer { isSyncing = false }
         do {
             try await body()
+            // 同步成功广播（切后台推送时用于发本地通知）
+            NotificationCenter.default.post(name: .syncCompleted, object: nil)
         } catch {
             fail(error.localizedDescription)
         }

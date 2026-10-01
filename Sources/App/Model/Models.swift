@@ -56,6 +56,8 @@ final class TaskItem {
     var lastModified: String = DateUtils.todayKey()
     var doneAt: String? = nil
     var sortOrder: Int = 0
+    /// 回收站：非空 = 已进回收站（30 天后清理）
+    var deletedAt: Date? = nil
 
     init(title: String, category: String, status: String = TaskStatus.planning.rawValue) {
         self.title = title
@@ -72,6 +74,8 @@ final class MemoItem {
     var text: String = ""
     var type: String = MemoType.note.rawValue
     var createdAt: String = DateUtils.isoNow()
+    /// 回收站：非空 = 已进回收站（30 天后清理）
+    var deletedAt: Date? = nil
 
     init(text: String, type: String = MemoType.note.rawValue) {
         self.text = text
@@ -89,6 +93,8 @@ final class BagItem {
     var desc: String? = nil
     var category: String? = nil
     var createdAt: String = DateUtils.todayKey()
+    /// 回收站：非空 = 已进回收站（30 天后清理）
+    var deletedAt: Date? = nil
 
     init(name: String, itemType: String = "physical", category: String? = nil) {
         self.name = name
@@ -130,6 +136,8 @@ final class CollectionItem {
     var fileMetaJson: String? = nil
     var fileUri: String? = nil
     var createdAt: String = DateUtils.todayKey()
+    /// 回收站：非空 = 已进回收站（30 天后清理）
+    var deletedAt: Date? = nil
 
     init(title: String, category: String? = nil) {
         self.title = title
@@ -148,6 +156,8 @@ final class LocationPin {
     var date: String = DateUtils.todayKey()
     var note: String? = nil
     var tagsJson: String? = nil
+    /// 回收站：非空 = 已进回收站（30 天后清理）
+    var deletedAt: Date? = nil
 
     init(name: String, lat: Double, lng: Double) {
         self.name = name
@@ -199,3 +209,16 @@ final class BagCategoryItem {
         self.sortOrder = sortOrder
     }
 }
+
+// MARK: - 回收站软删除协议
+
+/// 支持回收站的模型（v1.0.5）：删除先进回收站，30 天内可恢复
+protocol SoftDeletable: PersistentModel {
+    var deletedAt: Date? { get set }
+}
+
+extension TaskItem: SoftDeletable {}
+extension MemoItem: SoftDeletable {}
+extension BagItem: SoftDeletable {}
+extension CollectionItem: SoftDeletable {}
+extension LocationPin: SoftDeletable {}

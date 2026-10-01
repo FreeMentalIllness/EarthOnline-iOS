@@ -6,8 +6,8 @@
   "CFBundleInfoDictionaryVersion": "6.0",
   "CFBundleName": "EarthOnline",
   "CFBundlePackageType": "APPL",
-  "CFBundleShortVersionString": "1.0.4",
-  "CFBundleVersion": "1",
+  "CFBundleShortVersionString": "1.0.5",
+  "CFBundleVersion": "2",
   "CFBundleURLTypes": [
     {
       "CFBundleTypeRole": "Editor",

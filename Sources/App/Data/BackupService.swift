@@ -43,12 +43,12 @@ final class BackupService {
         return BackupPayload(
             exportedAt: DateUtils.isoNow(),
             profile: Self.profileDTO(from: profile),
-            tasks: repo.all(TaskItem.self).map { Self.taskDTO(from: $0) },
-            memos: repo.all(MemoItem.self).map { Self.memoDTO(from: $0) },
-            items: repo.all(BagItem.self).map { Self.itemDTO(from: $0) },
+            tasks: repo.active(TaskItem.self).map { Self.taskDTO(from: $0) },
+            memos: repo.active(MemoItem.self).map { Self.memoDTO(from: $0) },
+            items: repo.active(BagItem.self).map { Self.itemDTO(from: $0) },
             achievements: repo.all(AchievementItem.self).map { Self.achievementDTO(from: $0) },
-            collections: repo.all(CollectionItem.self).map { Self.collectionDTO(from: $0) },
-            locations: repo.all(LocationPin.self).map { Self.locationDTO(from: $0) },
+            collections: repo.active(CollectionItem.self).map { Self.collectionDTO(from: $0) },
+            locations: repo.active(LocationPin.self).map { Self.locationDTO(from: $0) },
             activities: repo.all(ActivityItem.self).map { Self.activityDTO(from: $0) }
         )
     }
@@ -243,11 +243,12 @@ final class BackupService {
 
     /// 导出前对账 XP：保持与 profile.xp 单一事实源一致
     static func derivedXp(for profile: ProfileItem, context: ModelContext) -> Int {
-        let tasksDone = ((try? context.fetch(FetchDescriptor<TaskItem>())) ?? []).filter { $0.doneAt != nil }.count
+        let allTasks = ((try? context.fetch(FetchDescriptor<TaskItem>())) ?? [])
+        let tasksDone = allTasks.filter { $0.deletedAt == nil && $0.doneAt != nil }.count
         let achievements = ((try? context.fetch(FetchDescriptor<AchievementItem>())) ?? []).filter { $0.unlocked }.count
-        let memos = ((try? context.fetch(FetchDescriptor<MemoItem>())) ?? []).count
-        let locations = ((try? context.fetch(FetchDescriptor<LocationPin>())) ?? []).count
-        let items = ((try? context.fetch(FetchDescriptor<BagItem>())) ?? []).count
+        let memos = ((try? context.fetch(FetchDescriptor<MemoItem>())) ?? []).filter { $0.deletedAt == nil }.count
+        let locations = ((try? context.fetch(FetchDescriptor<LocationPin>())) ?? []).filter { $0.deletedAt == nil }.count
+        let items = ((try? context.fetch(FetchDescriptor<BagItem>())) ?? []).filter { $0.deletedAt == nil }.count
         let xp = XpRules.totalXp(tasksDone: tasksDone, achievements: achievements, memos: memos, locations: locations, items: items)
         profile.xp = xp
         return xp

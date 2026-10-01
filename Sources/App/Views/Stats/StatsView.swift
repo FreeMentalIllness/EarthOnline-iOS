@@ -33,10 +33,10 @@ struct StatsView: View {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())], spacing: 10) {
             StatPillView(emoji: "🗓️", value: "\(session.stats.daysLived)", label: "登陆天数")
             StatPillView(emoji: "✅", value: "\(session.stats.tasksDone)", label: "完成任务")
-            StatPillView(emoji: "🎁", value: "\(items.count)", label: "背包物品")
+            StatPillView(emoji: "🎁", value: "\(session.stats.items)", label: "背包物品")
             StatPillView(emoji: "📚", value: "\(session.stats.collections)", label: "收藏")
-            StatPillView(emoji: "🗺️", value: "\(pins.count)", label: "足迹")
-            StatPillView(emoji: "🔥", value: "\(session.stats.streakDays)", label: "连续记录")
+            StatPillView(emoji: "🗺️", value: "\(session.stats.locations)", label: "足迹")
+            StatPillView(emoji: "🔥", value: "\(session.stats.currentStreak)", label: "当前连续")
         }
     }
 
@@ -105,7 +105,7 @@ struct StatsView: View {
 
     private var lastSevenDays: [DayPoint] {
         var buckets: [String: Int] = [:]
-        memos.forEach { buckets[DateUtils.dayOfIso($0.createdAt), default: 0] += 1 }
+        memos.filter { $0.deletedAt == nil }.forEach { buckets[DateUtils.dayOfIso($0.createdAt), default: 0] += 1 }
         var keys: [String] = []
         for offset in stride(from: 6, through: 0, by: -1) {
             if let date = Calendar.current.date(byAdding: .day, value: -offset, to: Date()) {
@@ -138,7 +138,7 @@ struct StatsView: View {
                             .font(.subheadline.monospacedDigit())
                             .foregroundStyle(Theme.textSecondary)
                     }
-                    LineProgressView(progress: Double(row.count) / Double(max(1, tasks.count)))
+                    LineProgressView(progress: Double(row.count) / Double(max(1, tasks.filter { $0.deletedAt == nil }.count)))
                 }
             }
         }
@@ -158,9 +158,9 @@ struct StatsView: View {
                 id: category.rawValue,
                 label: category.label,
                 emoji: category.emoji,
-                count: tasks.filter { $0.category == category.rawValue }.count
+                count: tasks.filter { $0.deletedAt == nil && $0.category == category.rawValue }.count
             )
         } + [TaskCountRow(id: "done", label: "已完成", emoji: "🏁",
-                          count: tasks.filter { $0.status == TaskStatus.done.rawValue }.count)]
+                          count: tasks.filter { $0.deletedAt == nil && $0.status == TaskStatus.done.rawValue }.count)]
     }
 }

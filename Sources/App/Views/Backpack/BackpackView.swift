@@ -134,7 +134,7 @@ struct BackpackView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                session.repo.delete(item)
+                                session.repo.softDelete(item)
                                 session.didMutateData()
                             } label: { Label("删除", systemImage: "trash") }
                         }
@@ -168,7 +168,7 @@ struct BackpackView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                session.repo.delete(collection)
+                                session.repo.softDelete(collection)
                                 session.didMutateData()
                             } label: { Label("删除", systemImage: "trash") }
                         }
@@ -183,6 +183,7 @@ struct BackpackView: View {
     private var filteredItems: [BagItem] {
         let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return items.filter { item in
+            guard item.deletedAt == nil else { return false }
             guard matches(categoryId: item.category) else { return false }
             guard !keyword.isEmpty else { return true }
             return item.name.localizedCaseInsensitiveContains(keyword) ||
@@ -193,6 +194,7 @@ struct BackpackView: View {
     private var filteredCollections: [CollectionItem] {
         let keyword = search.trimmingCharacters(in: .whitespacesAndNewlines)
         return collections.filter { collection in
+            guard collection.deletedAt == nil else { return false }
             guard matches(categoryId: collection.category) else { return false }
             guard !keyword.isEmpty else { return true }
             return collection.title.localizedCaseInsensitiveContains(keyword) ||

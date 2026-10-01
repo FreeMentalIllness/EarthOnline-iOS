@@ -27,6 +27,8 @@ final class AppSession: ObservableObject {
         sync = SyncManager(repo: repo, settings: settings, backups: backups)
         engine = LifeEngine(repo: repo)
         isReady = true
+        // 回收站超期清理（30 天）
+        repo.purgeExpiredDeleted()
         refresh()
         Task { await sync.pullIfNeeded() }
     }

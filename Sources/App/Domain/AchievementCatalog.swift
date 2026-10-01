@@ -92,6 +92,10 @@ struct AchStats {
     var recordStreak: Int = 0
     var emojiOnlyMemos: Int = 0
     var newYearBirth: Int = 0
+    // v1.0.5 对齐 Android 47 项
+    var blankTitleTries: Int = 0
+    var throwbackSeen: Int = 0
+    var memoryPhotos: Int = 0
 }
 
 // MARK: - 自动成就规则
@@ -177,6 +181,7 @@ enum AutoRules {
         AutoRule(key: "egg_night_owl", title: "夜猫子", desc: "累计 3 条写于 0~5 点的日志", category: "egg", goal: 3, current: { $0.nightOwlMemos }),
         AutoRule(key: "egg_early_bird", title: "早起的鸟儿", desc: "累计 3 条写于 5~7 点的日志", category: "egg", goal: 3, current: { $0.earlyBirdMemos }),
         AutoRule(key: "egg_midnight_task", title: "肝帝", desc: "在凌晨 3 点完成一个任务", category: "egg", goal: 1, current: { $0.am3TasksDone }),
+        AutoRule(key: "egg_blank_title", title: "空白也是一种态度", desc: "连续 3 次想保存一个空标题", category: "egg", goal: 3, current: { $0.blankTitleTries }),
         AutoRule(key: "egg_long_title", title: "一句话说不完", desc: "给任务起一个 ≥30 字的标题", category: "egg", goal: 1, current: { $0.longTitleTasks }),
         AutoRule(key: "egg_emoji_title", title: "表情包本人", desc: "任务标题里塞进 ≥5 个 emoji", category: "egg", goal: 1, current: { $0.emojiTitleTasks }),
         AutoRule(key: "egg_period_title", title: "句号强迫症", desc: "累计 3 个以「。」结尾的任务标题", category: "egg", goal: 3, current: { $0.periodTitleTasks }),
@@ -187,10 +192,29 @@ enum AutoRules {
         AutoRule(key: "egg_streak_30", title: "一个月不断更", desc: "连续 30 天记录世界日志", category: "egg", goal: 30, current: { $0.recordStreak }),
         AutoRule(key: "egg_streak_365", title: "全年无休", desc: "连续 365 天记录世界日志", category: "egg", goal: 365, current: { $0.recordStreak }),
         AutoRule(key: "egg_memo_emoji", title: "此时无声胜有声", desc: "写一条只有表情的日志", category: "egg", goal: 1, current: { $0.emojiOnlyMemos }),
-        AutoRule(key: "egg_newyear", title: "元旦宝宝", desc: "生日是 1 月 1 日", category: "egg", goal: 1, current: { $0.newYearBirth })
+        AutoRule(key: "egg_newyear", title: "元旦宝宝", desc: "生日是 1 月 1 日", category: "egg", goal: 1, current: { $0.newYearBirth }),
+        AutoRule(key: "egg_throwback", title: "时光回声", desc: "翻开一次「历年今日」的旧时光", category: "egg", goal: 1, current: { $0.throwbackSeen }),
+        AutoRule(key: "egg_memory_album", title: "记忆管理员", desc: "往记忆相册导入第一张老照片", category: "egg", goal: 1, current: { $0.memoryPhotos })
     ]
 
     static func rule(_ key: String) -> AutoRule? { all.first { $0.key == key } }
+}
+
+// MARK: - 彩蛋计数器（UserDefaults 口径，解锁判定走 AchStats）
+
+enum EggCounters {
+    static func registerBlankTitleTry() {
+        let key = "egg_blank_title_tries"
+        UserDefaults.standard.set(UserDefaults.standard.integer(forKey: key) + 1, forKey: key)
+    }
+
+    static func resetBlankTitleTries() {
+        UserDefaults.standard.set(0, forKey: "egg_blank_title_tries")
+    }
+
+    static func markThrowbackSeen() {
+        UserDefaults.standard.set(1, forKey: "egg_throwback_seen")
+    }
 }
 
 // MARK: - 真实事件时间源（用于回填 unlockedAt）

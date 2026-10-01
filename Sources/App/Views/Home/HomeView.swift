@@ -10,10 +10,12 @@ struct HomeView: View {
     @Query(sort: [SortDescriptor(\MemoItem.createdAt, order: .reverse)]) private var memos: [MemoItem]
     @Query private var tasks: [TaskItem]
     @Query private var profiles: [ProfileItem]
+    @Query private var pins: [LocationPin]
 
     @State private var quickLog: String = ""
     @State private var memoType: MemoType = .note
     @State private var showProfileSheet: Bool = false
+    @State private var showThrowback: Bool = false
 
     private var profile: ProfileItem? { profiles.first }
 
@@ -22,9 +24,11 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     greetingSection
+                    moodChips
                     levelCard
                     quickEntries
                     quickLogCard
+                    throwbackCard
                     timelineCard
                     recentFeedCard
                     Spacer(minLength: 24)
@@ -61,11 +65,39 @@ struct HomeView: View {
             Text("\(DateUtils.greeting())，\(displayName)")
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.textPrimary)
-            Text("今天是你在地球的第 \(max(0, session.stats.daysLived)) 天")
+            Text("今天是你在地球的第 \(max(0, session.stats.daysLived)) 天 · 连续记录 \(session.stats.currentStreak) 天（最高 \(session.stats.streakDays) 天）")
                 .font(.footnote)
                 .foregroundStyle(Theme.textSecondary)
+            let flavor = DateUtils.moodFlavor(session.settings.moodToday)
+            if !flavor.isEmpty {
+                Text(flavor)
+                    .font(.caption)
+                    .foregroundStyle(Theme.textMuted)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// 今日心情（v1.0.5：动态问候语的时间段 + 心情）
+    private var moodChips: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                moodChip("great", "😄 状态拉满")
+                moodChip("good", "🙂 顺风局")
+                moodChip("normal", "😐 平平淡淡")
+                moodChip("tired", "😪 有点累")
+                moodChip("down", "🌧️ 低气压")
+            }
+        }
+    }
+
+    private func moodChip(_ key: String, _ label: String) -> some View {
+        Button {
+            session.settings.moodToday = session.settings.moodToday == key ? "" : key
+        } label: {
+            ChipView(text: label, selected: session.settings.moodToday == key)
+        }
+        .buttonStyle(.plain)
     }
 
     private var levelCard: some View {
@@ -117,6 +149,7 @@ struct HomeView: View {
                 entry("足迹", emoji: "🗺️", subtitle: "\(session.stats.locations) 个坐标") { MapScreen() }
                 entry("看板", emoji: "📊", subtitle: "数据概览") { StatsView() }
                 entry("AI 伙伴", emoji: "🤖", subtitle: "随时聊两句") { AIView() }
+                entry("人生卡片", emoji: "🪪", subtitle: "生成长图分享") { LifeCardShareView() }
             }
         }
     }
@@ -163,8 +196,13 @@ struct HomeView: View {
                 .background(Theme.surfaceSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             HStack {
                 Button {
-                    guard !quickLog.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                    session.repo.addMemo(text: quickLog, type: memoType)
+                    let text = quickLog.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !text.isEmpty else { return }
+                    session.repo.addMemo(text: text, type: memoType)
+                    // 灵感接力：灵感类日志 1 小时后本地提醒，点按即可转待办
+                    if memoType == .idea {
+                        NotificationService.scheduleInspiration(text, delay: 3600)
+                    }
                     quickLog = ""
                     session.didMutateData()
                 } label: {
@@ -174,7 +212,7 @@ struct HomeView: View {
                 .buttonStyle(.borderedProminent)
                 .tint(Theme.accent)
                 Spacer()
-                if let last = memos.first {
+                if let last = memos.first(where: { $0.deletedAt == nil }) {
                     Text("上一条：\(DateUtils.relative(last.createdAt))")
                         .font(.caption2)
                         .foregroundStyle(Theme.textMuted)
@@ -255,6 +293,89 @@ struct HomeView: View {
         session.settings.customTimeline.append(
             TimelineEvent(title: "新的里程碑", date: DateUtils.todayKey())
         )
+    }
+
+    // MARK: 历年今日回顾（v1.0.5，触发 egg_throwback）
+
+    private var throwbackItems: [ThrowbackItem] {
+        let todaySuffix = DateUtils.monthDay(of: DateUtils.todayKey()) // "MM-dd"
+        guard !todaySuffix.isEmpty else { return [] }
+        var result: [ThrowbackItem] = []
+        for memo in memos where memo.deletedAt == nil {
+            let day = DateUtils.dayOfIso(memo.createdAt)
+            if DateUtils.monthDay(of: day) == todaySuffix, day != DateUtils.todayKey() {
+                result.append(ThrowbackItem(year: String(day.prefix(4)), emoji: "📝", text: memo.text))
+            }
+        }
+        for pin in pins {
+            let day = pin.date
+            if DateUtils.monthDay(of: day) == todaySuffix, day != DateUtils.todayKey() {
+                result.append(ThrowbackItem(year: String(day.prefix(4)), emoji: "🗺️", text: "足迹：\(pin.name)"))
+            }
+        }
+        for task in tasks where task.deletedAt == nil {
+            let day = DateUtils.dayOfIso(task.doneAt ?? "")
+            if DateUtils.monthDay(of: day) == todaySuffix, day != DateUtils.todayKey() {
+                result.append(ThrowbackItem(year: String(day.prefix(4)), emoji: "✅", text: "完成：\(task.title)"))
+            }
+        }
+        return result.sorted { $0.year > $1.year }
+    }
+
+    private var throwbackCard: some View {
+        let items = throwbackItems
+        return VStack(alignment: .leading, spacing: 8) {
+            Button {
+                showThrowback.toggle()
+                if showThrowback && !items.isEmpty {
+                    EggCounters.markThrowbackSeen()
+                    session.refresh() // 触发成就判定
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Text("🕰️ 历史上的今天")
+                        .font(.headline)
+                        .foregroundStyle(Theme.textPrimary)
+                    Spacer(minLength: 4)
+                    Image(systemName: showThrowback ? "chevron.up" : "chevron.down")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if showThrowback {
+                if items.isEmpty {
+                    Text("往年的今天还没有记录，写下第一条吧")
+                        .font(.caption)
+                        .foregroundStyle(Theme.textMuted)
+                } else {
+                    ForEach(Array(items.prefix(6).enumerated()), id: \.offset) { _, item in
+                        HStack(alignment: .top, spacing: 8) {
+                            Text(item.emoji)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.text)
+                                    .font(.subheadline)
+                                    .foregroundStyle(Theme.textPrimary)
+                                    .lineLimit(2)
+                                Text("\(item.year) 年的今天")
+                                    .font(.caption2)
+                                    .foregroundStyle(Theme.textMuted)
+                            }
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.vertical, 3)
+                    }
+                }
+            }
+        }
+        .eoCard()
+    }
+
+    private struct ThrowbackItem {
+        let year: String
+        let emoji: String
+        let text: String
     }
 
     // MARK: 最近动态

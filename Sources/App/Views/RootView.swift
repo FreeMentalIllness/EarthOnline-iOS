@@ -87,6 +87,19 @@ struct RootView: View {
                     Task { await session.sync?.pullIfNeeded() }
                 }
             }
+            .onReceive(NotificationCenter.default.publisher(for: .syncCompleted)) { _ in
+                // 后台自动推送成功 → 本地通知确认（前台不打扰）
+                if scenePhase == .background {
+                    NotificationService.notify(title: "同步完成 ✅", body: "本地数据已推送到云端")
+                }
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .inspirationTapped)) { note in
+                // 灵感接力：通知点按 → 一键转待办
+                guard session.isReady, let text = note.object as? String, !text.isEmpty else { return }
+                _ = session.repo.addTask(title: String(text.prefix(60)), category: .todo)
+                session.didMutateData()
+                tab = .tasks
+            }
             .onChange(of: session.celebrated.count) { _, count in
                 showCelebration = count > 0
             }

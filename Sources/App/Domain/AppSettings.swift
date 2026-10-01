@@ -20,6 +20,7 @@ enum SettingKeys {
     static let customTitle = "custom_title"
     static let skipNextPull = "skip_next_pull"
     static let lastAutoPull = "last_auto_pull_at"
+    static let moodToday = "mood_today"
     static let lastCelebratedLevel = "last_celebrated_level"
 }
 
@@ -121,6 +122,12 @@ final class AppSettings: ObservableObject {
         set { store.set(newValue, forKey: SettingKeys.lastAutoPull) }
     }
 
+    /// 今日心情（动态问候语用，非持久业务数据，清空数据时一并清除）
+    var moodToday: String {
+        get { store.string(forKey: SettingKeys.moodToday) ?? "" }
+        set { store.set(newValue, forKey: SettingKeys.moodToday) }
+    }
+
     /// 清空用户数据键（等价于 Android clearUserDataKeys）
     func clearUserDataKeys() {
         store.removeObject(forKey: SettingKeys.customTimeline)
@@ -129,6 +136,8 @@ final class AppSettings: ObservableObject {
         store.removeObject(forKey: SettingKeys.homeQuickEntries)
         store.removeObject(forKey: SettingKeys.customTitle)
         store.removeObject(forKey: SettingKeys.lastCelebratedLevel)
+        store.removeObject(forKey: SettingKeys.moodToday)
+        moodToday = ""
         homeFeedLimit = 3
         customTimeline = []
         homeQuickEntries = []

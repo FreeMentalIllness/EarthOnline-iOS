@@ -10,12 +10,15 @@ struct DiscoverView: View {
                 Section("成长") {
                     row(emoji: "🏅", title: "成就", subtitle: "共 \(session.stats.achievements) 枚已解锁") { AchievementsView() }
                     row(emoji: "📊", title: "数据看板", subtitle: "XP、记录密度与任务分布") { StatsView() }
+                    row(emoji: "🪪", title: "人生卡片", subtitle: "生成长图分享今日的你") { LifeCardShareView() }
                 }
                 Section("世界") {
                     row(emoji: "🗺️", title: "世界足迹", subtitle: "\(session.stats.locations) 个坐标") { MapScreen() }
+                    row(emoji: "🖼️", title: "记忆相册", subtitle: "老照片与旧时光") { MemoryAlbumView() }
                     row(emoji: "🤖", title: "AI 伙伴", subtitle: "总结、鼓励、聊天") { AIView() }
                 }
                 Section("系统能力") {
+                    row(emoji: "🔍", title: "全局搜索", subtitle: "一框查遍五类数据") { GlobalSearchView() }
                     liveActivityRow
                     widgetRow
                 }

@@ -17,6 +17,8 @@ struct LifeStats {
     var achievements: Int = 0
     var locations: Int = 0
     var streakDays: Int = 0
+    /// 当前连续记录天数（截至今天，含今天；中断归零）
+    var currentStreak: Int = 0
     var xpBreakdown: [XpRules.Breakdown] = []
 }
 
@@ -29,11 +31,11 @@ final class LifeEngine {
 
     func stats(settings: AppSettings) -> LifeStats {
         let profile = repo.profile()
-        let tasks = repo.all(TaskItem.self)
-        let memos = repo.all(MemoItem.self)
-        let items = repo.all(BagItem.self)
-        let collections = repo.all(CollectionItem.self)
-        let pins = repo.all(LocationPin.self)
+        let tasks = repo.active(TaskItem.self)
+        let memos = repo.active(MemoItem.self)
+        let items = repo.active(BagItem.self)
+        let collections = repo.active(CollectionItem.self)
+        let pins = repo.active(LocationPin.self)
         let achievements = repo.all(AchievementItem.self)
 
         let tasksDone = tasks.filter { $0.doneAt != nil }.count
@@ -59,6 +61,7 @@ final class LifeEngine {
         result.achievements = unlockedAchievements
         result.locations = pins.count
         result.streakDays = DateUtils.longestStreak(days: memos.map { DateUtils.dayOfIso($0.createdAt) })
+        result.currentStreak = DateUtils.currentStreak(days: memos.map { DateUtils.dayOfIso($0.createdAt) })
         result.xpBreakdown = XpRules.breakdown(tasksDone: tasksDone, achievements: unlockedAchievements,
                                                memos: memos.count, locations: pins.count, items: items.count)
         repo.save()
@@ -69,11 +72,11 @@ final class LifeEngine {
 
     func achievementStats() -> AchStats {
         let profile = repo.profile()
-        let tasks = repo.all(TaskItem.self)
-        let memos = repo.all(MemoItem.self)
-        let items = repo.all(BagItem.self)
-        let collections = repo.all(CollectionItem.self)
-        let pins = repo.all(LocationPin.self)
+        let tasks = repo.active(TaskItem.self)
+        let memos = repo.active(MemoItem.self)
+        let items = repo.active(BagItem.self)
+        let collections = repo.active(CollectionItem.self)
+        let pins = repo.active(LocationPin.self)
 
         var stats = AchStats()
         stats.tasksDone = tasks.filter { $0.doneAt != nil }.count
@@ -107,6 +110,11 @@ final class LifeEngine {
         stats.recordStreak = DateUtils.longestStreak(days: memos.map { DateUtils.dayOfIso($0.createdAt) })
         stats.emojiOnlyMemos = memos.filter { TextFeatures.isEmojiOnly($0.text) }.count
         stats.newYearBirth = profile.birthDate.hasSuffix("01-01") ? 1 : 0
+        // v1.0.5 彩蛋指标：空标题尝试（UserDefaults 连击计数）/ 历年今日翻看 / 记忆相册照片
+        let defaults = UserDefaults.standard
+        stats.blankTitleTries = defaults.integer(forKey: "egg_blank_title_tries")
+        stats.throwbackSeen = defaults.integer(forKey: "egg_throwback_seen")
+        stats.memoryPhotos = collections.filter { $0.category == "memory_album" }.count
         return stats
     }
 
