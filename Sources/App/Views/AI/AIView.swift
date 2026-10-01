@@ -37,7 +37,7 @@ struct AIView: View {
                         }
                         .padding(16)
                     }
-                    .onChange(of: history.count) { _ in
+                    .onChange(of: history.count) { _, _ in
                         if let last = history.last { proxy.scrollTo(last.id, anchor: .bottom) }
                     }
                 }
@@ -89,6 +89,8 @@ struct AIView: View {
     }
 
     private func send() {
+        // 防并发：快捷提示词与发送按钮共用此入口，发送中一律拒绝重复提交
+        guard !isSending else { return }
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
         input = ""

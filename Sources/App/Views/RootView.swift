@@ -62,7 +62,7 @@ struct RootView: View {
                 if let target = AppTab.from(url) { tab = target }
             }
             .environmentObject(liveActivity)
-            .onChange(of: scenePhase) { phase in
+            .onChange(of: scenePhase) { _, phase in
                 guard session.isReady else { return }
                 if phase == .background, session.settings.autoSync {
                     let sync = session.sync
@@ -72,7 +72,7 @@ struct RootView: View {
                     Task { await session.sync?.pullIfNeeded() }
                 }
             }
-            .onChange(of: session.celebrated.count) { count in
+            .onChange(of: session.celebrated.count) { _, count in
                 showCelebration = count > 0
             }
             .sheet(isPresented: $showCelebration) {
@@ -107,7 +107,7 @@ struct RootView: View {
                     .tabItem { Label(AppTab.settings.title, systemImage: AppTab.settings.icon) }
                     .tag(AppTab.settings)
             }
-            .onChange(of: tab) { newValue in
+            .onChange(of: tab) { _, newValue in
                 if newValue == .home { session.refresh() }
             }
         }

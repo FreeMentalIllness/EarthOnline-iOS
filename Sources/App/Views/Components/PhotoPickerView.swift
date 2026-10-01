@@ -12,12 +12,14 @@ struct PhotoPickerView: View {
         PhotosPicker(selection: $selection, matching: .images, photoLibrary: .shared()) {
             Label(title, systemImage: "photo")
         }
-        .onChange(of: selection) { newValue in
+        .onChange(of: selection) { _, newValue in
             guard let newValue else { return }
             Task {
                 if let data = try? await newValue.loadTransferable(type: Data.self) {
                     await MainActor.run { onPick(data) }
                 }
+                // 消费后清空，保证同一张照片再次选择仍能触发回调
+                await MainActor.run { selection = nil }
             }
         }
     }

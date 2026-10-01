@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 @main
@@ -132,11 +133,31 @@ struct StatusWidgetView: View {
     }
 }
 
+/// 深浅模式自适应取色（与主 App Theme 基线一致）：
+/// 容器背景用系统 .fill.tertiary 会跟随深色模式，文字若固定深色在深色下不可读
 enum WidgetColors {
-    static let background = Color(red: 0.973, green: 0.965, blue: 0.949)
-    static let card = Color.white
-    static let textPrimary = Color(red: 0.118, green: 0.102, blue: 0.086)
-    static let textSecondary = Color(red: 0.478, green: 0.447, blue: 0.408)
-    static let textMuted = Color(red: 0.690, green: 0.659, blue: 0.616)
+    static let background = Color.eoDynamic(light: 0.973, green: 0.965, blue: 0.949,
+                                            dark: 0.086, greenD: 0.078, blueD: 0.059)
+    static let card = Color.eoDynamic(light: 1.0, green: 1.0, blue: 1.0,
+                                      dark: 0.118, greenD: 0.102, blueD: 0.086)
+    static let textPrimary = Color.eoDynamic(light: 0.118, green: 0.102, blue: 0.086,
+                                             dark: 0.925, greenD: 0.906, blueD: 0.878)
+    static let textSecondary = Color.eoDynamic(light: 0.478, green: 0.447, blue: 0.408,
+                                               dark: 0.663, greenD: 0.627, blueD: 0.580)
+    static let textMuted = Color.eoDynamic(light: 0.690, green: 0.659, blue: 0.616,
+                                           dark: 0.435, greenD: 0.404, blueD: 0.365)
     static let accent = Color(red: 0.831, green: 0.639, blue: 0.451)
+}
+
+private extension Color {
+    /// 按深浅模式返回不同 RGBA（组件扩展不依赖主 App 的 Theme）
+    static func eoDynamic(light: Double, green: Double, blue: Double,
+                          dark: Double, greenD: Double, blueD: Double) -> Color {
+        Color(UIColor { trait in
+            if trait.userInterfaceStyle == .dark {
+                return UIColor(red: dark, green: greenD, blue: blueD, alpha: 1)
+            }
+            return UIColor(red: light, green: green, blue: blue, alpha: 1)
+        })
+    }
 }

@@ -25,7 +25,7 @@ struct BackpackView: View {
                     Text("收藏夹").tag(1)
                 }
                 .pickerStyle(.segmented)
-                .onChange(of: tab) { _ in selectedCategory = nil }
+                .onChange(of: tab) { _, _ in selectedCategory = nil }
 
                 categoryBar
 

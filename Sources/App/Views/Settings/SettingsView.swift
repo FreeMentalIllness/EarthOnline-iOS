@@ -198,14 +198,20 @@ struct SettingsView: View {
             HStack {
                 Button {
                     saveWebdav()
-                    Task { await session.sync.push() }
-                    observeSync()
+                    davHint = "同步中…"
+                    Task {
+                        await session.sync.push()
+                        davHint = session.sync.message
+                    }
                 } label: { Text("立即推送") }
                 Spacer()
                 Button {
                     saveWebdav()
-                    Task { await session.sync.pull() }
-                    observeSync()
+                    davHint = "同步中…"
+                    Task {
+                        await session.sync.pull()
+                        davHint = session.sync.message
+                    }
                 } label: { Text("立即拉取") }
             }
             if !davHint.isEmpty || !session.sync.message.isEmpty {
@@ -291,13 +297,6 @@ struct SettingsView: View {
             fileName: davFile.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "earth-online-backup.json" : davFile.trimmingCharacters(in: .whitespacesAndNewlines)
         )
     }
-
-    private func observeSync() {
-        Task {
-            try? await Task.sleep(nanoseconds: 1_500_000_000)
-            await MainActor.run { davHint = session.sync.message }
-        }
-    }
 }
 
 struct ShareSheet: UIViewControllerRepresentable {
@@ -318,7 +317,7 @@ struct TitleSettingsView: View {
         Form {
             Section("自定义称号") {
                 TextField("最多 12 个字", text: $text)
-                    .onChange(of: text) { newValue in
+                    .onChange(of: text) { _, newValue in
                         session.settings.customTitle = String(newValue.prefix(12))
                     }
             }
